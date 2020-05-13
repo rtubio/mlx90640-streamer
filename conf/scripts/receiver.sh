@@ -8,7 +8,7 @@ PORT_FORWARD=5001
 cleanup () {
   # before exiting, let's kill nc running in the background
   jobs
-  kill -9 $!
+  kill -n 9 $!
 }
 
 logger "Launching streamer to <localhost:$PORT>, blocksize = $BLOCKSIZE"
