@@ -1,0 +1,3 @@
+git
+gstreamer1.0-tools gstreamer1.0-plugins-*
+libavutil-dev libavcodec-dev libavformat-dev libsdl2-dev
