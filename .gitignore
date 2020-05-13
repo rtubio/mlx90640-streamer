@@ -1,6 +1,10 @@
 # Building directories
 .build/
 
+# Python basics
+*.pyc
+.env/
+
 # Prerequisites
 *.d
 

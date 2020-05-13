@@ -4,13 +4,58 @@
 #
 # rtpardavila@gmail.com
 
+load_conf () {
+  CONF="conf/project.ini"
+  [[ ! -f "$CONF" ]] && {
+    echo "[error, $0] Could not find essential <$CONF> file, exiting..."
+    exit -1
+  }
+  source "$CONF"
+  USER="$( whoami )"
+  echo "[info, $0] Starting execution, pwd = $(pwd)"
+}
+
 configure_os () {
   # Configures the operating system to run the streaming binary as a service
   [[ -z $( cat "/etc/passwd" | cut -d':' -f1 | grep "$SERVICE_USER" ) ]] && {
-      sudo useradd -s /usr/sbin/nologin -r -m -d "$SERVICE_WORKINGDIR" "$SERVICE_USER"
+    sudo useradd -s /usr/sbin/nologin -r -m -d "$SERVICE_WORKINGDIR" "$SERVICE_USER"
   } || {
-      echo "[$0] User <$SERVICE_USER> exists, skipping..."
+    echo "[warn, $0] User <$SERVICE_USER> exists, skipping"
   }
+
+  [[ -z $( uname -a | grep 'Debian' ) ]] && {
+    echo "[warn, $0] OS is not Debian, skipping package installation"
+    exit -1
+  }
+
+  [[ -f "$DEB_PKGS" ]] && {
+    sudo apt install $(grep -vE "^\s*#" $OS_PKGS  | tr "\n" " ")
+  } || {
+    echo "[warn, $0] OS packages file <$DEB_PKGS> does not exist, skipping"
+  }
+
+}
+
+setup_pyenv () {
+  # Setup of the Python environment
+  [[ -z $( uname -a | grep 'Debian' ) ]] && {
+    echo "[warn, $0] OS is not Debian, skipping package installation"
+    exit -1
+  }
+
+  [[ ! -d "$PYENV_D" ]] && virtualenv --python=python3 "$PYENV_D" &&\
+    echo "[$0, INF] \"$PYENV_D\" initialized"
+  [[ -f "$PIP_PKGS" ]] && {
+    source "$PYENV_ACTIVATE"
+    pip install -r "$PIP_PKGS"
+    deactivate
+  } || {
+    echo "[$0, WRN] No \"$PIP_PKGS\" available, skipping PYENV packages installation"
+  }
+
+  chmod +x "$freeze_sh"
+  ln -sf "$freeze_sh" "$freeze_ln"
+
 }
 
 configure_systemd () {
@@ -94,9 +139,9 @@ WantedBy=multi-user.target
 # #####################################################################################################
 # ### MAIN LOOP
 
-source "conf/project.ini"
-
+load_conf
 configure_os
+setup_pyenv
 make pristine && sudo make install
 create_streamer_conf
 configure_systemd

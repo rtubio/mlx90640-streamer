@@ -63,6 +63,7 @@ clean-objects:
 	rm -f *.o
 	rm -f *.so
 	rm -f *.a
+	rm -f *.gch
 
 clean: clean-objects
 	rm -f $(streamer_output)
@@ -75,7 +76,7 @@ install: install-libs
 	install -m 550 $(BUILD_DIR)$(STREAMER_BIN) $(DESTDIR)$(PREFIX)/bin/$(STREAMER_BIN)
 	chown $(SERVICE_USER):$(SERVICE_USER) $(DESTDIR)$(PREFIX)/bin/$(STREAMER_BIN)
 
-install-libs: libMLX90640_API.a libMLX90640_API.so
+install-libs:
 	install -d $(DESTDIR)$(PREFIX)/lib/
 	install -m 644 libMLX90640_API.a $(DESTDIR)$(PREFIX)/lib/
 	install -m 644 libMLX90640_API.so $(DESTDIR)$(PREFIX)/lib/

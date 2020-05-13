@@ -70,146 +70,182 @@
  *
  */
 
+// Specific MLX90640 constants
+#define MLX_I2C_ADDR        0x33
+#define MLX_EE_BUFFER_LEN   832
+#define MLX_FRAME_LEN       834
 
-#define MLX_I2C_ADDR 0x33
-
-#define IMAGE_SCALE 5
+#define MLX_RR_1FPS         0b001
+#define MLX_RR_2FPS         0b010
+#define MLX_RR_4FPS         0b011
+#define MLX_RR_8FPS         0b100
+#define MLX_RR_16FPS        0b101
+#define MLX_RR_32FPS        0b110
+#define MLX_RR_64FPS        0b111
 
 // Valid frame rates are 1, 2, 4, 8, 16, 32 and 64
 // The i2c baudrate is set to 1mhz to support these
-#define FPS 16
-#define FRAME_TIME_MICROS (1000000/FPS)
+#define DEFAULT_FPS           16
+#define DEFAULT_REFRESH_RATE  0b001
+#define FRAME_TIME_MICROS     ( 1000000 / DEFAULT_FPS )
+#define VMIN                  -15.0
+#define VMAX                  +120.0
+#define TARGET_EMISSIVITY     0.85    // graphite
+#define X_MAX                 32
+#define Y_MAX                 24
 
-// Despite the framerate being ostensibly FPS hz
-// The frame is often not ready in time
-// This offset is added to the FRAME_TIME_MICROS
-// to account for this.
-#define OFFSET_MICROS 850
+// Configurable resolutions
+#define RESOLUTION_16bit      0x00
+#define RESOLUTION_17bit      0x01
+#define RESOLUTION_18bit      0x01
+#define RESOLUTION_19bit      0x03
 
-#define PIXEL_SIZE_BYTES 3
-#define IMAGE_SIZE 768*PIXEL_SIZE_BYTES
+// Despite the framerate being ostensibly DEFAULT_FPS hz, the frame is often not ready in time
+// This offset is added to the FRAME_TIME_MICROS to account for this.
+#define OFFSET_MICROS     850
 
-void put_pixel_false_colour(char *image, int x, int y, double v) {
+// Image sizing numbers
+// pixels X_MAX * Y_MAX
+// max resolution: 16 to 19 bits > 2 to 3 bytes : always 3 bytes (oversized for lowest resolution)
+#define PIXEL_SIZE_B      3
+#define IMAGE_PIXELS      X_MAX * Y_MAX
+#define IMAGE_SIZE        IMAGE_PIXELS * PIXEL_SIZE_B
+
+
+void pixel2colour(char *image, int x, int y, double v) {
+
     // Heatmap code borrowed from: http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients
-    const int NUM_COLORS = 7;
+    const static int NUM_COLORS = 7;
     static float color[NUM_COLORS][3] = { {0,0,0}, {0,0,1}, {0,1,0}, {1,1,0}, {1,0,0}, {1,0,1}, {1,1,1} };
-    int idx1, idx2;
-    float fractBetween = 0;
-    float vmin = 5.0;
-    float vmax = 50.0;
-    float vrange = vmax-vmin;
-    int offset = (y*32+x) * PIXEL_SIZE_BYTES;
+    int   idx1, idx2;
+    float fractBetween  = 0;
+    float vmin          = VMIN;
+    float vmax          = VMAX;
+    float vrange        = vmax-vmin;
+    int   offset          = (y*X_MAX+x) * PIXEL_SIZE_B;
 
     v -= vmin;
     v /= vrange;
-    if(v <= 0) {idx1=idx2=0;}
-    else if(v >= 1) {idx1=idx2=NUM_COLORS-1;}
-    else
-    {
-        v *= (NUM_COLORS-1);
+
+    if      (v <= 0) idx1 = idx2 = 0;
+    else if (v >= 1) idx1 = idx2 = (NUM_COLORS - 1);
+    else {
+        v *= (NUM_COLORS - 1);
         idx1 = floor(v);
-        idx2 = idx1+1;
+        idx2 = idx1 + 1;
         fractBetween = v - float(idx1);
     }
 
-    int ir, ig, ib;
-
-
-    ir = (int)((((color[idx2][0] - color[idx1][0]) * fractBetween) + color[idx1][0]) * 255.0);
-    ig = (int)((((color[idx2][1] - color[idx1][1]) * fractBetween) + color[idx1][1]) * 255.0);
-    ib = (int)((((color[idx2][2] - color[idx1][2]) * fractBetween) + color[idx1][2]) * 255.0);
-
     //put calculated RGB values into image map
-    image[offset] = ir;
-    image[offset + 1] = ig;
-    image[offset + 2] = ib;
+    image[offset + 0] = (int)((((color[idx2][0] - color[idx1][0]) * fractBetween) + color[idx1][0]) * 255.0);
+    image[offset + 1] = (int)((((color[idx2][1] - color[idx1][1]) * fractBetween) + color[idx1][1]) * 255.0);
+    image[offset + 2] = (int)((((color[idx2][2] - color[idx1][2]) * fractBetween) + color[idx1][2]) * 255.0);
 
+}
+
+float get_fps(int argc, char **argv) {
+
+  char *p;
+  float fps = 0.0;
+
+  if (argc > 1) {
+      fps = strtol(argv[1], &p, 0);
+      if (errno !=0 || *p != '\0') {
+          fprintf(stderr, "Invalid framerate\n");
+          exit(-1);
+      }
+  }
+
+  return fps;
+
+}
+
+int calculate_refresh_rate(int fps) {
+
+  switch(fps) {
+      case 1:
+          return MLX_RR_1FPS;
+      case 2:
+          return MLX_RR_2FPS;
+      case 4:
+          return MLX_RR_4FPS;
+      case 8:
+          return MLX_RR_8FPS;
+      case 16:
+          return MLX_RR_16FPS;
+          break;
+      case 32:
+          return MLX_RR_32FPS;
+      case 64:
+          return MLX_RR_64FPS;
+      default:
+          fprintf(stderr, "Unsupported framerate: %d\n", fps); exit(-1);
+  }
+
+}
+
+void raw2rgb(char* image, float* raw) {
+
+  for ( int y = 0; y < Y_MAX; y++ ) {
+      for ( int x = 0; x < X_MAX; x++ ) {
+          float raw_pixel = raw[X_MAX * (Y_MAX - 1 - y) + x];
+          pixel2colour(image, x, y, raw_pixel);
+      }
+  }
 
 }
 
 int main(int argc, char *argv[]){
 
-    static uint16_t eeMLX90640[832];
-    float emissivity = 0.8;
-    uint16_t frame[834];
-    static char image[IMAGE_SIZE];
-    static float mlx90640To[768];
-    float eTa;
-    static uint16_t data[768*sizeof(float)];
-    static int fps = FPS;
-    static long frame_time_micros = FRAME_TIME_MICROS;
-    char *p;
+    paramsMLX90640  mlx90640;
+    static uint16_t eeMLX90640  [MLX_EE_BUFFER_LEN];
+    uint16_t        frame       [MLX_FRAME_LEN];
+    static char     image       [IMAGE_SIZE];
+    static float    raw         [IMAGE_PIXELS];
 
-    if(argc > 1){
-        fps = strtol(argv[1], &p, 0);
-        if (errno !=0 || *p != '\0') {
-            fprintf(stderr, "Invalid framerate\n");
-            return 1;
-        }
-        frame_time_micros = 1000000/fps;
-    }
+    static int fps                  = DEFAULT_FPS;
+    static int refresh_rate_setting = DEFAULT_REFRESH_RATE;
+    static long frame_time_micros   = FRAME_TIME_MICROS;
 
-    auto frame_time = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
+    fps                   = get_fps(argc, argv);
+    refresh_rate_setting  = calculate_refresh_rate(fps);
+    frame_time_micros     = 1e6 / fps;
+    auto frame_time       = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
 
-    MLX90640_SetDeviceMode(MLX_I2C_ADDR, 0);
-    MLX90640_SetSubPageRepeat(MLX_I2C_ADDR, 0);
-    switch(fps){
-        case 1:
-            MLX90640_SetRefreshRate(MLX_I2C_ADDR, 0b001);
-            break;
-        case 2:
-            MLX90640_SetRefreshRate(MLX_I2C_ADDR, 0b010);
-            break;
-        case 4:
-            MLX90640_SetRefreshRate(MLX_I2C_ADDR, 0b011);
-            break;
-        case 8:
-            MLX90640_SetRefreshRate(MLX_I2C_ADDR, 0b100);
-            break;
-        case 16:
-            MLX90640_SetRefreshRate(MLX_I2C_ADDR, 0b101);
-            break;
-        case 32:
-            MLX90640_SetRefreshRate(MLX_I2C_ADDR, 0b110);
-            break;
-        case 64:
-            MLX90640_SetRefreshRate(MLX_I2C_ADDR, 0b111);
-            break;
-        default:
-            fprintf(stderr, "Unsupported framerate: %d\n", fps);
-            return 1;
-    }
-    MLX90640_SetChessMode(MLX_I2C_ADDR);
-
-    paramsMLX90640 mlx90640;
-    MLX90640_DumpEE(MLX_I2C_ADDR, eeMLX90640);
-    MLX90640_SetResolution(MLX_I2C_ADDR, 0x03);
-    MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
+    MLX90640_SetRefreshRate     (MLX_I2C_ADDR, refresh_rate_setting);
+    MLX90640_SetDeviceMode      (MLX_I2C_ADDR, 0);
+    MLX90640_SetSubPageRepeat   (MLX_I2C_ADDR, 0);
+    MLX90640_SetChessMode       (MLX_I2C_ADDR);
+    MLX90640_DumpEE             (MLX_I2C_ADDR, eeMLX90640);
+    MLX90640_SetResolution      (MLX_I2C_ADDR, RESOLUTION_19bit);
+    MLX90640_ExtractParameters  (eeMLX90640, &mlx90640);
 
     while (1){
-        auto start = std::chrono::system_clock::now();
-        MLX90640_GetFrameData(MLX_I2C_ADDR, frame);
-        MLX90640_InterpolateOutliers(frame, eeMLX90640);
 
-        eTa = MLX90640_GetTa(frame, &mlx90640); // Sensor ambient temprature
-        MLX90640_CalculateTo(frame, &mlx90640, emissivity, eTa, mlx90640To); //calculate temprature of all pixels, base on emissivity of object
+        auto start    = std::chrono::system_clock::now();
 
-        //Fill image array with false-colour data (raw RGB image with 24 x 32 x 24bit per pixel)
-        for(int y = 0; y < 24; y++){
-            for(int x = 0; x < 32; x++){
-                float val = mlx90640To[32 * (23-y) + x];
-                put_pixel_false_colour(image, x, y, val);
-            }
-        }
+        // Read data from sensor
+        MLX90640_GetFrameData         (MLX_I2C_ADDR, frame);
+        MLX90640_InterpolateOutliers  (frame, eeMLX90640);
 
-        //wite RGB image to stdout
-        fwrite(&image, 1, IMAGE_SIZE, stdout);
-        fflush(stdout); // push to stdout now
+        // Sensor ambient temprature
+        // Calculate temprature of all pixels, based on object's emmissivity.
+        float eTa = MLX90640_GetTa  (frame, &mlx90640);
+        MLX90640_CalculateTo        (frame, &mlx90640, TARGET_EMISSIVITY, eTa, raw);
 
-        auto end = std::chrono::system_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        // Fill image array with false-colour data (raw RGB image with 24 x 32 x 24bit per pixel)
+        // Write RGB image to stdout and flush out
+        raw2rgb (image, raw);
+        fwrite  (&image, 1, IMAGE_SIZE, stdout);
+        fflush  (stdout);
+
+        // Estimate time until next frame is ready, and sleep until that
+        auto end      = std::chrono::system_clock::now();
+        auto elapsed  = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
+
     }
 
     return 0;
+
 }
