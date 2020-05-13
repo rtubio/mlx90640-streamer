@@ -22,7 +22,8 @@ configure_systemd () {
   [[ ! -d "$SERVICE_WORKINGDIR" ]] && sudo mkdir -p "$SERVICE_WORKINGDIR"
 
   create_systemd_conf "$systemd_service_conf" \
-    "$SERVICE_EXEC" "$SERVICE_WORKINGDIR" "$SERVICE_ID" "$SYSTEMD_USER" "$SERVICE_PID"
+    "$SERVICE_EXEC" "$SERVICE_WORKINGDIR" "$SERVICE_ID" "$SYSTEMD_USER" "$SERVICE_PID"\
+    "$SERVICE_ID"
 
   sudo systemctl daemon-reload && \
     sudo systemctl enable "$SERVICE_NAME" && \
@@ -57,9 +58,11 @@ create_systemd_conf () {
     # configuration read from "conf/integration.conf"
     # $1 : path to the configuration file
     # $2 : execution command
-    # $3 : working directory for the daemon
+    # $3 : working directory for the daemon (path)
     # $4 : service identifier
     # $5 : user to run the deamon as (has the same individual group associated to)
+    # $6 : daemon's PID file
+    # $7 : working directory name for the daemon
 
   filestr=$"
 [Unit]
@@ -76,6 +79,9 @@ Restart=always
 User=$5
 Group=$5
 PIDFile=$6
+PermissionsStartOnly=true
+RuntimeDirectory=$7
+RuntimeDirectoryMode=0777
 
 [Install]
 WantedBy=multi-user.target
