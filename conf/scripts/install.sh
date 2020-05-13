@@ -25,7 +25,7 @@ configure_os () {
 
   [[ -z $( uname -a | grep 'Debian' ) ]] && {
     echo "[warn, $0] OS is not Debian, skipping package installation"
-    exit -1
+    return
   }
 
   [[ -f "$DEB_PKGS" ]] && {
@@ -45,8 +45,8 @@ configure_os () {
 setup_pyenv () {
   # Setup of the Python environment
   [[ -z $( uname -a | grep 'Debian' ) ]] && {
-    echo "[warn, $0] OS is not Debian, skipping package installation"
-    exit -1
+    echo "[warn, $0] OS is not Debian, skipping PIP package installation"
+    return
   }
 
   [[ ! -d "$PYENV_D" ]] && virtualenv --python=python3 "$PYENV_D" &&\
