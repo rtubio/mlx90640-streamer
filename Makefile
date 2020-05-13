@@ -78,8 +78,8 @@ install: install-libs
 
 install-libs:
 	install -d $(DESTDIR)$(PREFIX)/lib/
-	install -m 644 libMLX90640_API.a $(DESTDIR)$(PREFIX)/lib/
-	install -m 644 libMLX90640_API.so $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 $(BUILD_DIR)libMLX90640_API.a $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 $(BUILD_DIR)libMLX90640_API.so $(DESTDIR)$(PREFIX)/lib/
 	install -d $(DESTDIR)$(PREFIX)/include/MLX90640/
 	install -m 644 $(LIB_DIR)/*.h $(DESTDIR)$(PREFIX)/include/MLX90640/
 	ldconfig

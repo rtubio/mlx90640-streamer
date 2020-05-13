@@ -1,0 +1,3 @@
+[submodule "xpython"]
+	path = xpython
+	url = git@github.com:rtubio/xpython.git

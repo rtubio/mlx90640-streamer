@@ -29,9 +29,15 @@ configure_os () {
   }
 
   [[ -f "$DEB_PKGS" ]] && {
-    sudo apt install $(grep -vE "^\s*#" $OS_PKGS  | tr "\n" " ")
+    sudo apt install $(grep -vE "^\s*#" $DEB_PKGS  | tr "\n" " ")
   } || {
     echo "[warn, $0] OS packages file <$DEB_PKGS> does not exist, skipping"
+  }
+
+  [[ -f "$XPYTHON_DEB_PKGS" ]] && {
+    sudo apt install $(grep -vE "^\s*#" $XPYTHON_DEB_PKGS  | tr "\n" " ")
+  } || {
+    echo "[warn, $0] OS packages file <$XPYTHON_DEB_PKGS> does not exist, skipping"
   }
 
 }
@@ -51,6 +57,14 @@ setup_pyenv () {
     deactivate
   } || {
     echo "[$0, WRN] No \"$PIP_PKGS\" available, skipping PYENV packages installation"
+  }
+
+  [[ -f "$XPYTHON_PIP_PKGS" ]] && {
+    source "$PYENV_ACTIVATE"
+    pip install -r "$XPYTHON_PIP_PKGS"
+    deactivate
+  } || {
+    echo "[$0, WRN] No \"$XPYTHON_PIP_PKGS\" available, skipping PYENV packages installation"
   }
 
   chmod +x "$freeze_sh"
@@ -92,6 +106,7 @@ create_streamer_conf () {
 FPS=$FPS
 HOST=$REMOTE_HOST
 PORT=$REMOTE_PORT
+DATASETBIN=/tmp/dataset.bin
     "
 
   echo "$filestr" | sudo tee "$streamer_conf"

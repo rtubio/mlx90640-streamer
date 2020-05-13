@@ -110,6 +110,7 @@
 #define PIXEL_SIZE_B      3
 #define IMAGE_PIXELS      X_MAX * Y_MAX
 #define IMAGE_SIZE        IMAGE_PIXELS * PIXEL_SIZE_B
+#define RAW_IMAGE_SIZE    IMAGE_PIXELS * sizeof(float)
 
 
 void pixel2colour(char *image, int x, int y, double v) {
@@ -173,7 +174,6 @@ int calculate_refresh_rate(int fps) {
           return MLX_RR_8FPS;
       case 16:
           return MLX_RR_16FPS;
-          break;
       case 32:
           return MLX_RR_32FPS;
       case 64:
@@ -229,7 +229,7 @@ int main(int argc, char *argv[]){
         MLX90640_InterpolateOutliers  (frame, eeMLX90640);
 
         // Sensor ambient temprature
-        // Calculate temprature of all pixels, based on object's emmissivity.
+        // Calculate temprature of all pixels, based on object's emmissivity (WARNING).
         float eTa = MLX90640_GetTa  (frame, &mlx90640);
         MLX90640_CalculateTo        (frame, &mlx90640, TARGET_EMISSIVITY, eTa, raw);
 
@@ -237,7 +237,14 @@ int main(int argc, char *argv[]){
         // Write RGB image to stdout and flush out
         raw2rgb (image, raw);
         fwrite  (&image, 1, IMAGE_SIZE, stdout);
-        fflush  (stdout);
+        fflush  (stderr);
+
+        // RAW binary data is saved in a temporary dump
+        FILE *rawfp = fopen("/tmp/dataset.bin", "a");
+        if (rawfp == NULL) exit(-1);
+        fwrite(&raw, 1, RAW_IMAGE_SIZE,  rawfp);
+        fflush(rawfp);
+        fclose(rawfp);
 
         // Estimate time until next frame is ready, and sleep until that
         auto end      = std::chrono::system_clock::now();

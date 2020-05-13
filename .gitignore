@@ -4,6 +4,7 @@
 # Python basics
 *.pyc
 .env/
+.empty/
 
 # Prerequisites
 *.d
