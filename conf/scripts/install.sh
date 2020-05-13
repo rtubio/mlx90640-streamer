@@ -13,39 +13,21 @@ configure_os () {
   }
 }
 
-install_binary () {
-  # Copy binary file to executable destination
-
-  [[ ! -f "$SERVICE_BINARY" ]] && {
-      sudo cp -f "$BINARY_PATH" "$SERVICE_BINARY"
-      sudo chown "$SERVICE_USER:$SERVICE_USER" "$SERVICE_BINARY"
-      sudo chmod ug+x "$SERVICE_BINARY"
-  } || {
-      echo "[$0] File <$SERVICE_BINARY> exists, skipping..."
-  }
-
-  [[ ! -f "$STREAMER_BINARY" ]] && {
-      sudo cp -f "$STREAMER_PATH" "$STREAMER_BINARY"
-      sudo chown "$SERVICE_USER:$SERVICE_USER" "$STREAMER_BINARY"
-      sudo chmod ug+x "$STREAMER_BINARY"
-  } || {
-      echo "[$0] File <$STREAMER_BINARY> exists, skipping..."
-  }
-}
-
 configure_systemd () {
-  [[ ! -f "$systemd_service_conf" ]] && {
 
-      create_systemd_conf "$systemd_service_conf" \
-          "$SERVICE_EXEC" "$SERVICE_WORKINGDIR" "$SERVICE_ID" "$SYSTEMD_USER" "$SERVICE_PID"
+  sudo cp -f "$STREAMER_PATH" "$STREAMER_BINARY"
+	sudo chown "$SERVICE_USER:$SERVICE_USER" "$STREAMER_BINARY"
+	sudo chmod ug+x "$STREAMER_BINARY"
 
-      sudo systemctl daemon-reload && \
-          sudo systemctl enable "$SERVICE_NAME" && \
-          sudo systemctl start "$SERVICE_NAME"
+  [[ ! -d "$SERVICE_WORKINGDIR" ]] && sudo mkdir -p "$SERVICE_WORKINGDIR"
 
-  } || {
-      echo "[$0] Systemd configuration file <$systemd_service_conf> exists, skipping..."
-  }
+  create_systemd_conf "$systemd_service_conf" \
+    "$SERVICE_EXEC" "$SERVICE_WORKINGDIR" "$SERVICE_ID" "$SYSTEMD_USER" "$SERVICE_PID"
+
+  sudo systemctl daemon-reload && \
+    sudo systemctl enable "$SERVICE_NAME" && \
+    sudo systemctl start "$SERVICE_NAME"
+
 }
 
 create_streamer_conf () {
@@ -97,7 +79,7 @@ PIDFile=$6
 
 [Install]
 WantedBy=multi-user.target
-    "
+  "
 
   echo "$filestr" | sudo tee "$1"
 
@@ -109,6 +91,6 @@ WantedBy=multi-user.target
 source "conf/project.ini"
 
 configure_os
-install_binary
+make pristine && sudo make install
 create_streamer_conf
 configure_systemd

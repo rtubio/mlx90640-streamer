@@ -4,6 +4,8 @@ I2C_LIBS =
 SRC_DIR = src/
 BUILD_DIR = .build/
 LIB_DIR = lib/
+STREAMER_BIN = mlx90640-streamer
+SERVICE_USER = mlx90640
 
 streamer = streamer
 streamer_objects = $(addsuffix .o,$(addprefix $(SRC_DIR), $(streamer)))
@@ -26,7 +28,8 @@ init:
 	mkdir -p $(BUILD_DIR)
 
 post:
-	mv libMLX90640_API.* $(BUILD_DIR).
+	mv -f libMLX90640_API.* $(BUILD_DIR).
+	mv -f $(BUILD_DIR)$(streamer) $(BUILD_DIR)$(STREAMER_BIN)
 
 streamer: $(streamer_output)
 
@@ -48,19 +51,15 @@ lib/interpolate.o : CC=$(CXX) -std=c++11
 $(BUILD_DIR)streamer: $(SRC_DIR)streamer.o libMLX90640_API.a
 	$(CXX) -L$(LIB_DIR) $^ -o $@ $(I2C_LIBS)
 
-bcm2835-1.55.tar.gz:
-	wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.55.tar.gz
-
-bcm2835-1.55: bcm2835-1.55.tar.gz
-	tar xzvf bcm2835-1.55.tar.gz
-
 bcm2835: bcm2835-1.55
+	wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.55.tar.gz
+	mv -f bcm2835-1.55.tar.gz $(BUILD_DIR).
+	cd $(BUILD_DIR); tar xzvf bcm2835-1.55.tar.gz
 	cd bcm2835-1.55; ./configure; make; sudo make install
 
 clean-objects:
 	rm -f $(SRC_DIR)*.o
 	rm -f $(LIB_DIR)*.o
-	rm -f lib/*.o
 	rm -f *.o
 	rm -f *.so
 	rm -f *.a
@@ -71,7 +70,12 @@ clean: clean-objects
 purge: clean
 	rm -Rf $(BUILD_DIR)
 
-install: libMLX90640_API.a libMLX90640_API.so
+install: install-libs
+	install -d $(DESTDIR)$(PREFIX)/bin/
+	install -m 550 $(BUILD_DIR)$(STREAMER_BIN) $(DESTDIR)$(PREFIX)/bin/$(STREAMER_BIN)
+	chown $(SERVICE_USER):$(SERVICE_USER) $(DESTDIR)$(PREFIX)/bin/$(STREAMER_BIN)
+
+install-libs: libMLX90640_API.a libMLX90640_API.so
 	install -d $(DESTDIR)$(PREFIX)/lib/
 	install -m 644 libMLX90640_API.a $(DESTDIR)$(PREFIX)/lib/
 	install -m 644 libMLX90640_API.so $(DESTDIR)$(PREFIX)/lib/
