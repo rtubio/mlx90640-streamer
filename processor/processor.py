@@ -1,6 +1,7 @@
 """This is the processor that digests the raw data from MLX90640 and analyzes it."""
 
 import argparse
+import matplotlib.pyplot as pl
 import numpy as np
 
 from xpython.common import files, logger
@@ -11,21 +12,15 @@ class MLX90640RawFrame(logger.LoggingClass):
     This is an array of floats, with 32x24 elements (MLX90640 pixels)
     """
 
-    PIXELS_X        = 32
-    PIXELS_Y        = 24
-    PIXELS_FRAME    = PIXELS_X * PIXELS_Y
-    SIZE_PIXEL      = np.dtype(np.float32).itemsize
-    SIZE_FRAME      = PIXELS_FRAME * SIZE_PIXEL
-
     def __init__(self, frame, time_us):
         """Default constructor
-        data - array with the pixel data
+        frame - array with the pixel data
+        time_us - timestamp (in microseconds) at which the image was taken
         """
         super(MLX90640RawFrame, self).__init__()
-        self.frame      = frame
-        self.time_us    = time_us
 
-        self._l.debug(f"{str(self.frame)}")
+        self.frame       = frame
+        self.time_us     = time_us
 
     def __str__(self):
         return "frame@" + str(self.time_us) + ":" + str([",".join(item) for item in self.frame.astype(str)])
@@ -38,17 +33,11 @@ class MLX90640RawFrame(logger.LoggingClass):
     def size(self):
         return self.dim[0] * self.dim[1] * self.SIZE_PIXEL
 
-    @staticmethod
-    def read(file, time_us):
+    def process(self):
         """
-        This method creates a frame by reading its data from the given file.
-        file - file object to read binary data from.
+        This method processes the given frame in order to analyze the thermal resistance of the image.
         """
-        array = np.fromfile(file, dtype=np.float, count=MLX90640RawFrame.PIXELS_FRAME)
-        return MLX90640RawFrame(
-            array.reshape([MLX90640RawFrame.PIXELS_X, MLX90640RawFrame.PIXELS_Y]),
-            time_us
-        )
+        pass
 
 
 class MLX90640RawDataProcessor(logger.LoggingClass):
@@ -58,40 +47,60 @@ class MLX90640RawDataProcessor(logger.LoggingClass):
     frames per second. The value of FPS determines the time distance in between frames.
     """
 
-    # datatype = np.dtype([(np.float, MLX90640RawFrame.PIXELS_X * MLX90640RawFrame.PIXELS_Y)])
-    datatype = np.dtype(np.float32)
+    PIXELS_X        = 32
+    PIXELS_Y        = 24
+    PIXELS_FRAME    = PIXELS_X * PIXELS_Y
+    SIZE_PIXEL      = np.dtype(np.float32.itemsize
+    SIZE_FRAME      = PIXELS_FRAME * SIZE_PIXEL
+    FRAME_SHAPE     = [PIXELS_X, PIXELS_Y]
+    PX_DISTANCE_MM  = 10
+    P0              = (int(PIXELS_X * 0.5), int(PIXELS_Y * 0.5))
+    P1              = None
+    P2              = None
 
-    def __init__(self, fps, raw_filepath):
+    def __init__(self, fps, distance_mm, raw_filepath, px_distance_mm=10):
         """Default constructor
         fps - frames per second, necessary to calculate the timeline
+        distance_mm - mm of distance from the camera to the target material
         raw_filepath - path to the binary file with the RAW frames
+        px_distance_mm=10 - mm of distance from P0 to P1 or P2
         """
         self.fps = fps
+        self.distance_mm = distance_mm
         self.raw_filepath = raw_filepath
-        self._timestep_us = 1.0*1e6 / self.fps
-        self.frames = {}
 
-    def process(self):
+        self._timestep_us = 1.0*1e6 / self.fps
+        self.frames = []
+
+        self.read()
+        self.process()
+
+    def read(self):
         """
-        This method processes the given file, where the RAW data is supposed to be stored.
+        This method reads the frames from the given file, where the RAW data is supposed to be stored.
         """
-        t_us = 0.0
+        time_us = 0.0
 
         with open(self.raw_filepath, mode='r') as f:
             while True:
 
                 try:
 
-                    frame = MLX90640RawFrame.read(f, t_us)
-                    print(f"@{t_us}, len = {frame.dim}, size = {frame.size}")
-                    self.frames[t_us] = frame
-                    t_us += self._timestep_us
-
-                    break
+                    array = np.fromfile(file, dtype=np.float32, count=MLX90640RawFrame.PIXELS_FRAME)
+                    frame = MLX90640RawFrame(array.reshape(MLX90640RawFrame.FRAME_SHAPE), time_us)
+                    self.frames.append(frame)
+                    time_us += self._timestep_us
 
                 except ValueError as ex:
                     print(f"[warn] Aborting file reading, reason = {ex}")
                     break
+
+    def process(self):
+        """
+        This method processes the frames read from the file.
+        """
+        for t in self.frames:
+            f.process()
 
     @staticmethod
     def create(argv):
