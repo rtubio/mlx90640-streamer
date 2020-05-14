@@ -244,9 +244,10 @@ int main(int argc, char **argv) {
         // Write RGB image to stdout and flush out
         raw2rgb (image, raw);
 
-        if (__DEB__) for (int i = 0; i < IMAGE_PIXELS; i++) fprintf (stdout, "raw = %.6f\n", raw[i]);
+        if (__DEB__) for (int i = 0; i < IMAGE_PIXELS; i++) fprintf (stdout, "raw = %.3f\n", raw[i]);
         else {
 
+          // IMAGE binary data
           fwrite  (&image, 1, IMAGE_SIZE, stdout);
           fflush  (stderr);
 
