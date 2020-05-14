@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
         raw2rgb (image, raw);
 
         if (__DEB__) {
-          for (int i = 0; i < IMAGE_PIXELS; i++) fprintf (stdout, "raw = %.6f", raw[i]);
+          for (int i = 0; i < IMAGE_PIXELS; i++) fprintf (stdout, "raw = %.6f\n", raw[i]);
         } else {
 
           fwrite  (&image, 1, IMAGE_SIZE, stdout);
