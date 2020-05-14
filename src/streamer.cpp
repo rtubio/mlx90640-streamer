@@ -252,7 +252,7 @@ int main(int argc, char **argv) {
           // RAW binary data is saved in a temporary dump
           FILE *rawfp = fopen("/tmp/dataset.bin", "a");
           if (rawfp == NULL) exit(-1);
-          fwrite(&raw, sizeof(float), IMAGE_PIXELS,  rawfp);
+          fwrite(&raw, sizeof(float), IMAGE_PIXELS, rawfp);
           fflush(rawfp);
           fclose(rawfp);
 
