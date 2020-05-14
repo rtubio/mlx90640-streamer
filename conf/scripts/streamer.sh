@@ -2,7 +2,9 @@
 
 source /etc/streamer.conf
 
-logger "Launching streamer to <$HOST:$PORT> with fps ($FPS)"
+logger "[info, $0] Launching streamer to <$HOST:$PORT> with fps ($FPS)"
+
+[[ -f "$DATASETBIN" ]] && rm -f "$DATASETBIN" && logger "[warn, $0] <$DATASETBIN> removed"
 
 [[ -z "$DEBUG" ]] && {
   /usr/local/bin/mlx90640-streamer $FPS "debug" | \

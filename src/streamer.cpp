@@ -211,6 +211,7 @@ int main(int argc, char **argv) {
     static long frame_time_micros   = FRAME_TIME_MICROS + OFFSET_MICROS;
 
     bool __DEB__ = (argc > 2) ? true : false;
+    if (__DEB__) fprintf(stdout, "__DEBUG__ mode activated");
 
     fps                   = read_args(argc, argv);
     refresh_rate_setting  = calculate_refresh_rate(fps);
@@ -250,7 +251,7 @@ int main(int argc, char **argv) {
           fflush  (stderr);
 
           // RAW binary data is saved in a temporary dump
-          FILE *rawfp = fopen("/tmp/dataset.bin", "a");
+          FILE *rawfp = fopen("/tmp/dataset.bin", "ab");
           if (rawfp == NULL) exit(-1);
           fwrite(&raw, sizeof(float), IMAGE_PIXELS, rawfp);
           fflush(rawfp);

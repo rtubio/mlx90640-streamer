@@ -80,8 +80,6 @@ configure_systemd () {
 	sudo chown "$SERVICE_USER:$SERVICE_USER" "$STREAMER_BINARY"
 	sudo chmod ug+x "$STREAMER_BINARY"
 
-  [[ ! -d "$SERVICE_WORKINGDIR" ]] && sudo mkdir -p "$SERVICE_WORKINGDIR"
-
   create_systemd_conf "$systemd_service_conf" \
     "$SERVICE_EXEC" "$SERVICE_WORKINGDIR" "$SERVICE_ID" "$SYSTEMD_USER" "$SERVICE_PID"\
     "$SERVICE_ID"
@@ -89,6 +87,8 @@ configure_systemd () {
   sudo systemctl daemon-reload && \
     sudo systemctl enable "$SERVICE_NAME" && \
     sudo systemctl start "$SERVICE_NAME"
+
+  sudo service "$SERVICE_ID" restart
 
 }
 
@@ -99,16 +99,11 @@ create_streamer_conf () {
     # $3 : HOST (default value)
     # $4 : PORT (default value)
 
-  [[ -f "$streamer_conf" ]] && {
-    echo "[$0] Streamer configuration file <$streamer_conf> exists, skipping..."
-    return
-  }
-
   filestr=$"
 FPS=$FPS
 HOST=$REMOTE_HOST
 PORT=$REMOTE_PORT
-DATASETBIN=/tmp/dataset.bin
+DATASETBIN='/tmp/dataset.bin'
 DEBUG=0
     "
 

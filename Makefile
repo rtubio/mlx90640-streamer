@@ -5,11 +5,16 @@ SRC_DIR = src/
 BUILD_DIR = .build/
 LIB_DIR = lib/
 STREAMER_BIN = mlx90640-streamer
+READER_BIN = mlx90640-reader
 SERVICE_USER = mlx90640
 
 streamer = streamer
 streamer_objects = $(addsuffix .o,$(addprefix $(SRC_DIR), $(streamer)))
 streamer_output = $(addprefix $(BUILD_DIR), $(streamer))
+
+reader = reader
+reader_objects = $(addsuffix .o,$(addprefix $(SRC_DIR), $(reader)))
+reader_output = $(addprefix $(BUILD_DIR), $(reader))
 
 #PREFIX is environment variable, but if it is not set, then set default value
 ifeq ($(PREFIX),)
@@ -20,7 +25,7 @@ ifeq ($(I2C_MODE), LINUX)
 	I2C_LIBS =
 endif
 
-all: init libMLX90640_API.a libMLX90640_API.so streamer post
+all: init libMLX90640_API.a libMLX90640_API.so streamer reader post
 
 pristine: all clean-objects
 
@@ -28,10 +33,12 @@ init:
 	mkdir -p $(BUILD_DIR)
 
 post:
-	mv -f libMLX90640_API.* $(BUILD_DIR).
+	mv -f libMLX90640_API.* 			$(BUILD_DIR).
 	mv -f $(BUILD_DIR)$(streamer) $(BUILD_DIR)$(STREAMER_BIN)
+	mv -f $(BUILD_DIR)$(reader) 	$(BUILD_DIR)$(READER_BIN)
 
 streamer: $(streamer_output)
+reader: $(reader_output)
 
 libMLX90640_API.so: lib/MLX90640_API.o lib/MLX90640_$(I2C_MODE)_I2C_Driver.o
 	$(CXX) -fPIC -shared $^ -o $@ $(I2C_LIBS)
@@ -43,12 +50,17 @@ libMLX90640_API.a: lib/MLX90640_API.o lib/MLX90640_$(I2C_MODE)_I2C_Driver.o
 lib/MLX90640_API.o lib/MLX90640_RPI_I2C_Driver.o lib/MLX90640_LINUX_I2C_Driver.o : CXXFLAGS+=-fPIC -I $(LIB_DIR) -shared $(I2C_LIBS)
 
 $(streamer_objects) : CXXFLAGS+=-std=c++11
-
 $(streamer_output) : CXXFLAGS+=-I$(LIB_DIR) -std=c++11
+
+$(reader_objects) : CXXFLAGS+=-std=c++11
+$(reader_output) : CXXFLAGS+=-I$(LIB_DIR) -std=c++11
 
 lib/interpolate.o : CC=$(CXX) -std=c++11
 
 $(BUILD_DIR)streamer: $(SRC_DIR)streamer.o libMLX90640_API.a
+	$(CXX) -L$(LIB_DIR) $^ -o $@ $(I2C_LIBS)
+
+$(BUILD_DIR)reader: $(SRC_DIR)reader.o libMLX90640_API.a
 	$(CXX) -L$(LIB_DIR) $^ -o $@ $(I2C_LIBS)
 
 bcm2835: bcm2835-1.55
