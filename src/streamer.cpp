@@ -147,14 +147,12 @@ void pixel2colour(char *image, int x, int y, double v) {
 float read_args(int argc, char **argv) {
 
   if (argc < 1) {
-    fprintf(stdout, "argc = %d\n", argc);
-    fflush(stdout);
     fprintf(stderr, "Wrong arguments, FPS needs to be specified\n");
     exit(-1);
   }
 
-  char *p;
-  float fps = 0.0;
+  char *p     = NULL;
+  float fps   = 0.0;
 
   fps = strtol(argv[1], &p, 0);
   if ( errno != 0 || *p != '\0' ) {
@@ -254,7 +252,7 @@ int main(int argc, char **argv) {
           // RAW binary data is saved in a temporary dump
           FILE *rawfp = fopen("/tmp/dataset.bin", "a");
           if (rawfp == NULL) exit(-1);
-          fwrite(&raw, 1, RAW_IMAGE_SIZE,  rawfp);
+          fwrite(&raw, sizeof(float), IMAGE_PIXELS,  rawfp);
           fflush(rawfp);
           fclose(rawfp);
 
