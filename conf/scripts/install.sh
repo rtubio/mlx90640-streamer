@@ -49,6 +49,7 @@ setup_pyenv () {
     return
   }
 
+  echo "[$0, INF] \"$PYENV_D\" setting up..."
   [[ ! -d "$PYENV_D" ]] && virtualenv --python=python3 "$PYENV_D" &&\
     echo "[$0, INF] \"$PYENV_D\" initialized"
   [[ -f "$PIP_PKGS" ]] && {
@@ -59,6 +60,7 @@ setup_pyenv () {
     echo "[$0, WRN] No \"$PIP_PKGS\" available, skipping PYENV packages installation"
   }
 
+  echo "[$0, INF] \"$PYENV_D\" setting up with xpython packages"
   [[ -f "$XPYTHON_PIP_PKGS" ]] && {
     source "$PYENV_ACTIVATE"
     pip install -r "$XPYTHON_PIP_PKGS"

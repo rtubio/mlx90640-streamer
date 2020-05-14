@@ -1,5 +1,6 @@
 # Building directories
 .build/
+__pycache__/
 
 # Python basics
 *.pyc
