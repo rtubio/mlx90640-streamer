@@ -144,18 +144,23 @@ void pixel2colour(char *image, int x, int y, double v) {
 
 }
 
-float get_fps(int argc, char **argv) {
+float read_args(int argc, char **argv, bool *debug) {
+
+  if (argc < 1) {
+    fprintf(stderr, "Wrong arguments, FPS needs to be specified, argv = %s\n", argv);
+    exit(-1);
+  }
 
   char *p;
   float fps = 0.0;
 
-  if (argc > 1) {
-      fps = strtol(argv[1], &p, 0);
-      if (errno !=0 || *p != '\0') {
-          fprintf(stderr, "Invalid framerate\n");
-          exit(-1);
-      }
+  fps = strtol(argv[1], &p, 0);
+  if ( errno != 0 || *p != '\0' ) {
+      fprintf(stderr, "Wrong arguments, invalid framerate, argv = %s\n", argv);
+      exit(-1);
   }
+
+  if (argc > 1) *debug = true;
 
   return fps;
 
@@ -207,7 +212,9 @@ int main(int argc, char *argv[]){
     static int refresh_rate_setting = DEFAULT_REFRESH_RATE;
     static long frame_time_micros   = FRAME_TIME_MICROS;
 
-    fps                   = get_fps(argc, argv);
+    bool __DEB__ = false;
+
+    fps                   = read_args(argc, argv, &__DEB__);
     refresh_rate_setting  = calculate_refresh_rate(fps);
     frame_time_micros     = 1e6 / fps;
     auto frame_time       = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
@@ -236,8 +243,12 @@ int main(int argc, char *argv[]){
         // Fill image array with false-colour data (raw RGB image with 24 x 32 x 24bit per pixel)
         // Write RGB image to stdout and flush out
         raw2rgb (image, raw);
-        fwrite  (&image, 1, IMAGE_SIZE, stdout);
-        fflush  (stderr);
+        if (__DEB__) {
+          fwrite  (&image, 1, IMAGE_SIZE, stdout);
+          fflush  (stderr);
+        } else {
+          for (int i = 0; i < IMAGE_PIXELS; i++) fprintf (stdout, "raw = %.6f", raw[i]);
+        }
 
         // RAW binary data is saved in a temporary dump
         FILE *rawfp = fopen("/tmp/dataset.bin", "a");

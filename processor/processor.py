@@ -87,6 +87,8 @@ class MLX90640RawDataProcessor(logger.LoggingClass):
                     self.frames[t_us] = frame
                     t_us += self._timestep_us
 
+                    break
+
                 except ValueError as ex:
                     print(f"[warn] Aborting file reading, reason = {ex}")
                     break
