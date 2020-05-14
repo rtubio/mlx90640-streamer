@@ -123,7 +123,7 @@ void pixel2colour(char *image, int x, int y, double v) {
     float vmin          = VMIN;
     float vmax          = VMAX;
     float vrange        = vmax-vmin;
-    int   offset          = (y*X_MAX+x) * PIXEL_SIZE_B;
+    int   offset        = (y*X_MAX+x) * PIXEL_SIZE_B;
 
     v -= vmin;
     v /= vrange;
@@ -146,6 +146,7 @@ void pixel2colour(char *image, int x, int y, double v) {
 
 float read_args(int argc, char **argv, bool *debug) {
 
+  fprintf(stdout, "AAA");
   if (argc < 1) {
     fprintf(stderr, "Wrong arguments, FPS needs to be specified, argv = %s\n", argv);
     exit(-1);
@@ -200,13 +201,13 @@ void raw2rgb(char* image, float* raw) {
 
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char **argv) {
 
-    paramsMLX90640  mlx90640;
-    static uint16_t eeMLX90640  [MLX_EE_BUFFER_LEN];
-    uint16_t        frame       [MLX_FRAME_LEN];
-    static char     image       [IMAGE_SIZE];
-    static float    raw         [IMAGE_PIXELS];
+    static paramsMLX90640 mlx90640;
+    static uint16_t       eeMLX90640  [MLX_EE_BUFFER_LEN];
+    static uint16_t       frame       [MLX_FRAME_LEN];
+    static char           image       [IMAGE_SIZE];
+    static float          raw         [IMAGE_PIXELS];
 
     static int fps                  = DEFAULT_FPS;
     static int refresh_rate_setting = DEFAULT_REFRESH_RATE;
