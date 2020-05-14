@@ -144,11 +144,12 @@ void pixel2colour(char *image, int x, int y, double v) {
 
 }
 
-float read_args(int argc, char **argv, bool *debug) {
+float read_args(int argc, char **argv) {
 
-  fprintf(stdout, "AAA");
   if (argc < 1) {
-    fprintf(stderr, "Wrong arguments, FPS needs to be specified, argv = %s\n", argv);
+    fprintf(stdout, "argc = %d\n", argc);
+    fflush(stdout);
+    fprintf(stderr, "Wrong arguments, FPS needs to be specified\n");
     exit(-1);
   }
 
@@ -157,11 +158,9 @@ float read_args(int argc, char **argv, bool *debug) {
 
   fps = strtol(argv[1], &p, 0);
   if ( errno != 0 || *p != '\0' ) {
-      fprintf(stderr, "Wrong arguments, invalid framerate, argv = %s\n", argv);
+      fprintf(stderr, "Wrong arguments, invalid framerate\n");
       exit(-1);
   }
-
-  if (argc > 1) *debug = true;
 
   return fps;
 
@@ -211,14 +210,14 @@ int main(int argc, char **argv) {
 
     static int fps                  = DEFAULT_FPS;
     static int refresh_rate_setting = DEFAULT_REFRESH_RATE;
-    static long frame_time_micros   = FRAME_TIME_MICROS;
+    static long frame_time_micros   = FRAME_TIME_MICROS + OFFSET_MICROS;
 
-    bool __DEB__ = false;
+    bool __DEB__ = (argc > 2) ? true : false;
 
-    fps                   = read_args(argc, argv, &__DEB__);
+    fps                   = read_args(argc, argv);
     refresh_rate_setting  = calculate_refresh_rate(fps);
     frame_time_micros     = 1e6 / fps;
-    auto frame_time       = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
+    auto frame_time       = std::chrono::microseconds(frame_time_micros);
 
     MLX90640_SetRefreshRate     (MLX_I2C_ADDR, refresh_rate_setting);
     MLX90640_SetDeviceMode      (MLX_I2C_ADDR, 0);
@@ -228,7 +227,7 @@ int main(int argc, char **argv) {
     MLX90640_SetResolution      (MLX_I2C_ADDR, RESOLUTION_19bit);
     MLX90640_ExtractParameters  (eeMLX90640, &mlx90640);
 
-    while (1){
+    while (1) {
 
         auto start    = std::chrono::system_clock::now();
 
@@ -244,19 +243,22 @@ int main(int argc, char **argv) {
         // Fill image array with false-colour data (raw RGB image with 24 x 32 x 24bit per pixel)
         // Write RGB image to stdout and flush out
         raw2rgb (image, raw);
+
         if (__DEB__) {
+          for (int i = 0; i < IMAGE_PIXELS; i++) fprintf (stdout, "raw = %.6f", raw[i]);
+        } else {
+
           fwrite  (&image, 1, IMAGE_SIZE, stdout);
           fflush  (stderr);
-        } else {
-          for (int i = 0; i < IMAGE_PIXELS; i++) fprintf (stdout, "raw = %.6f", raw[i]);
-        }
 
-        // RAW binary data is saved in a temporary dump
-        FILE *rawfp = fopen("/tmp/dataset.bin", "a");
-        if (rawfp == NULL) exit(-1);
-        fwrite(&raw, 1, RAW_IMAGE_SIZE,  rawfp);
-        fflush(rawfp);
-        fclose(rawfp);
+          // RAW binary data is saved in a temporary dump
+          FILE *rawfp = fopen("/tmp/dataset.bin", "a");
+          if (rawfp == NULL) exit(-1);
+          fwrite(&raw, 1, RAW_IMAGE_SIZE,  rawfp);
+          fflush(rawfp);
+          fclose(rawfp);
+
+        }
 
         // Estimate time until next frame is ready, and sleep until that
         auto end      = std::chrono::system_clock::now();
