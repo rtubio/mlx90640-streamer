@@ -109,6 +109,7 @@ FPS=$FPS
 HOST=$REMOTE_HOST
 PORT=$REMOTE_PORT
 DATASETBIN=/tmp/dataset.bin
+DEBUG=0
     "
 
   echo "$filestr" | sudo tee "$streamer_conf"
