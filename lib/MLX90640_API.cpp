@@ -121,93 +121,85 @@ int MLX90640_InterpolateOutliers(uint16_t *frameData, uint16_t *eepromData)
 
 int MLX90640_GetFrameData(uint8_t slaveAddr, uint16_t *frameData)
 {
-    uint16_t dataReady = 1;
+    uint16_t dataReady = 0;
     uint16_t controlRegister1;
     uint16_t statusRegister;
-    int error = 1;
     uint8_t cnt = 0;
+    int error = 1;
 
     auto t_start = std::chrono::system_clock::now();
-    dataReady = 0;
-    while(dataReady == 0)
-    {
+
+    while (dataReady == 0) {
+
         error = MLX90640_I2CRead(slaveAddr, 0x8000, 1, &statusRegister);
-        if(error != 0)
-        {
-            return error;
-        }
+        if (error != 0) return error;
+
         dataReady = statusRegister & 0x0008;
 
-	auto t_end = std::chrono::system_clock::now();
-	auto t_elapsed = std::chrono::duration_cast<std::chrono::seconds>(t_end - t_start);
-	if (t_elapsed.count() > 5) {
-		printf("frameData timeout error waiting for dataReady \n");
-		return -1;
-	}
+      	auto t_end = std::chrono::system_clock::now();
+      	auto t_elapsed = std::chrono::duration_cast<std::chrono::seconds>(t_end - t_start);
+      	if (t_elapsed.count() > 5) {
+      		printf("frameData timeout error waiting for dataReady \n");
+      		return -1;
+      	}
+
     }
 
-    while(dataReady != 0 && cnt < 5)
-    {
+    while (dataReady != 0 && cnt < 5) {
+
         error = MLX90640_I2CWrite(slaveAddr, 0x8000, 0x0030);
-        if(error == -1)
-        {
-            return error;
-        }
+        if (error < 0) return error;
 
         error = MLX90640_I2CRead(slaveAddr, 0x0400, 832, frameData);
-        if(error != 0)
-        {
-            printf("frameData read error \n");
-            return error;
-        }
+        if (error < 0) return error;
 
         error = MLX90640_I2CRead(slaveAddr, 0x8000, 1, &statusRegister);
-        if(error != 0)
-        {
-            return error;
-        }
+        if (error < 0) return error;
+
         dataReady = statusRegister & 0x0008;
-        cnt = cnt + 1;
+        cnt++;
+
     }
 
-    if(cnt > 4)
-    {
+    /* NOTE: originally, the code had commented out the return statement, so that the execution
+              keeps going, after this issue has been detected. This means that the data is
+              returned, even if more than 4 attempts were executed to get it from the microcontroller.
+    if(cnt > 4) {
         fprintf(stderr, "cnt > 4 error \n");
         // return -8;
     }
     //printf("count: %d \n", cnt);
+    */
+
     error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
+    if (error != 0) return error;
+
     frameData[832] = controlRegister1;
     frameData[833] = statusRegister & 0x0001;
-
-    if(error != 0)
-    {
-        return error;
-    }
-
     return frameData[833];
+
 }
 
-int MLX90640_ExtractParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
-{
-    int error = CheckEEPROMValid(eeData);
+int MLX90640_ExtractParameters(uint16_t *eeData, paramsMLX90640 *mlx90640) {
 
-    if(error == 0)
-    {
-        ExtractVDDParameters(eeData, mlx90640);
-        ExtractPTATParameters(eeData, mlx90640);
-        ExtractGainParameters(eeData, mlx90640);
-        ExtractTgcParameters(eeData, mlx90640);
-        ExtractResolutionParameters(eeData, mlx90640);
-        ExtractKsTaParameters(eeData, mlx90640);
-        ExtractKsToParameters(eeData, mlx90640);
-        ExtractAlphaParameters(eeData, mlx90640);
-        ExtractOffsetParameters(eeData, mlx90640);
-        ExtractKtaPixelParameters(eeData, mlx90640);
-        ExtractKvPixelParameters(eeData, mlx90640);
-        ExtractCPParameters(eeData, mlx90640);
-        ExtractCILCParameters(eeData, mlx90640);
+    int error = CheckEEPROMValid(eeData);
+    if (error == 0) {
+        ExtractVDDParameters        (eeData, mlx90640);
+        ExtractPTATParameters       (eeData, mlx90640);
+        ExtractGainParameters       (eeData, mlx90640);
+        ExtractTgcParameters        (eeData, mlx90640);
+        ExtractResolutionParameters (eeData, mlx90640);
+        ExtractKsTaParameters       (eeData, mlx90640);
+        ExtractKsToParameters       (eeData, mlx90640);
+        ExtractAlphaParameters      (eeData, mlx90640);
+        ExtractOffsetParameters     (eeData, mlx90640);
+        ExtractKtaPixelParameters   (eeData, mlx90640);
+        ExtractKvPixelParameters    (eeData, mlx90640);
+        ExtractCPParameters         (eeData, mlx90640);
+        ExtractCILCParameters       (eeData, mlx90640);
+
         error = ExtractDeviatingPixels(eeData, mlx90640);
+
     }
 
     return error;
@@ -216,8 +208,8 @@ int MLX90640_ExtractParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
 
 //------------------------------------------------------------------------------
 
-int MLX90640_SetResolution(uint8_t slaveAddr, uint8_t resolution)
-{
+int MLX90640_SetResolution(uint8_t slaveAddr, uint8_t resolution) {
+
     uint16_t controlRegister1;
     int value;
     int error;
@@ -226,8 +218,7 @@ int MLX90640_SetResolution(uint8_t slaveAddr, uint8_t resolution)
 
     error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
 
-    if(error == 0)
-    {
+    if (error == 0) {
         value = (controlRegister1 & 0xF3FF) | value;
         error = MLX90640_I2CWrite(slaveAddr, 0x800D, value);
     }
@@ -237,61 +228,46 @@ int MLX90640_SetResolution(uint8_t slaveAddr, uint8_t resolution)
 
 //------------------------------------------------------------------------------
 
-int MLX90640_GetCurResolution(uint8_t slaveAddr)
-{
+int MLX90640_GetCurResolution(uint8_t slaveAddr) {
+
     uint16_t controlRegister1;
-    int resolutionRAM;
-    int error;
 
-    error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
-    if(error != 0)
-    {
-        return error;
-    }
-    resolutionRAM = (controlRegister1 & 0x0C00) >> 10;
+    int error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
+    if (error != 0) return error;
 
-    return resolutionRAM;
+    return (controlRegister1 & 0x0C00) >> 10;
+
 }
 
 //------------------------------------------------------------------------------
 
-int MLX90640_SetRefreshRate(uint8_t slaveAddr, uint8_t refreshRate)
-{
+int MLX90640_SetRefreshRate(uint8_t slaveAddr, uint8_t refreshRate) {
+
     uint16_t controlRegister1;
-    int value;
-    int error;
+    // (NOT IN USE) value = (refreshRate & 0x07)<<7;
 
-    value = (refreshRate & 0x07)<<7;
-
-    error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
-    if(error == 0)
-    {
-        value = (controlRegister1 & 0xFC7F) | value;
+    int error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
+    if ( error == 0 ) {
+        int value = (controlRegister1 & 0xFC7F) | value;
         error = MLX90640_I2CWrite(slaveAddr, 0x800D, value);
     }
 
     return error;
+
 }
 
-//------------------------------------------------------------------------------
 
-int MLX90640_GetRefreshRate(uint8_t slaveAddr)
-{
+int MLX90640_GetRefreshRate(uint8_t slaveAddr) {
+
     uint16_t controlRegister1;
-    int refreshRate;
-    int error;
 
-    error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
-    if(error != 0)
-    {
-        return error;
-    }
-    refreshRate = (controlRegister1 & 0x0380) >> 7;
+    int error = MLX90640_I2CRead(slaveAddr, 0x800D, 1, &controlRegister1);
+    if (error != 0) return error;
 
-    return refreshRate;
+    return (controlRegister1 & 0x0380) >> 7;
+
 }
 
-//------------------------------------------------------------------------------
 
 int MLX90640_SetInterleavedMode(uint8_t slaveAddr)
 {
