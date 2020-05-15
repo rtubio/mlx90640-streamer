@@ -225,6 +225,9 @@ int main(int argc, char **argv) {
     MLX90640_DumpEE             (MLX_I2C_ADDR, eeMLX90640);
     MLX90640_SetResolution      (MLX_I2C_ADDR, RESOLUTION_19bit);
     MLX90640_ExtractParameters  (eeMLX90640, &mlx90640);
+    // RAW binary data is saved in a temporary dump
+    FILE *rawfp = fopen("/tmp/dataset.bin", "ab");
+    if (rawfp == NULL) exit(-1);
 
     while (1) {
 
@@ -250,12 +253,8 @@ int main(int argc, char **argv) {
           fwrite  (&image, 1, IMAGE_SIZE, stdout);
           fflush  (stderr);
 
-          // RAW binary data is saved in a temporary dump
-          FILE *rawfp = fopen("/tmp/dataset.bin", "ab");
-          if (rawfp == NULL) exit(-1);
           fwrite(&raw, sizeof(float), IMAGE_PIXELS, rawfp);
           fflush(rawfp);
-          fclose(rawfp);
 
         }
 
@@ -265,6 +264,8 @@ int main(int argc, char **argv) {
         std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
     }
+
+    fclose(rawfp);
 
     return 0;
 
