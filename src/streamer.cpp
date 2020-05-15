@@ -225,9 +225,6 @@ int main(int argc, char **argv) {
     MLX90640_DumpEE             (MLX_I2C_ADDR, eeMLX90640);
     MLX90640_SetResolution      (MLX_I2C_ADDR, RESOLUTION_19bit);
     MLX90640_ExtractParameters  (eeMLX90640, &mlx90640);
-    // RAW binary data is saved in a temporary dump
-    // FILE *rawfp = fopen("/tmp/dataset.bin", "ab");
-    // if (rawfp == NULL) exit(-1);
 
     while (1) {
 
@@ -246,17 +243,13 @@ int main(int argc, char **argv) {
         // Write RGB image to stdout and flush out
         raw2rgb (image, raw);
 
-        if (__DEB__) for (int i = 0; i < IMAGE_PIXELS; i++) fprintf (stdout, "raw = %.3f\n", raw[i]);
-        else {
+        // IMAGE binary data (STDOUT)
+        fwrite  (&image, 1, IMAGE_SIZE, stdout);
+        fflush  (stderr);
 
-          // IMAGE binary data
-          fwrite  (&image, 1, IMAGE_SIZE, stdout);
-          fflush  (stderr);
-
-          // fwrite(&raw, sizeof(float), IMAGE_PIXELS, rawfp);
-          // fflush(rawfp);
-
-        }
+        // RAW binary data (STDERR)
+        fwrite(&raw, sizeof(float), IMAGE_PIXELS, stderr);
+        fflush(stderr);  // flush now to stderr
 
         // Estimate time until next frame is ready, and sleep until that
         auto end      = std::chrono::system_clock::now();
@@ -264,8 +257,6 @@ int main(int argc, char **argv) {
         std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
     }
-
-    // fclose(rawfp);
 
     return 0;
 
