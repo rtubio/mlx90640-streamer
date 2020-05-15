@@ -216,8 +216,8 @@ int main(int argc, char *argv[]){
         fwrite(&image, 1, IMAGE_SIZE, stdout);
         fflush(stdout); // flush now to stdout
 
-        // fwrite(&pixels, sizeof(float), IMAGE_PIXELS, rawfp);
-        // fflush(rawfp);  // flush now to file
+        fwrite(&pixels, sizeof(float), IMAGE_PIXELS, stderr);
+        fflush(stderr);  // flush now to file
 
         auto end = std::chrono::system_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
