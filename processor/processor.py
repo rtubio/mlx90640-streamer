@@ -23,7 +23,8 @@ class MLX90640RawFrame(logger.LoggingClass):
         self.time_us     = time_us
 
     def __str__(self):
-        return "frame@" + str(self.time_us) + ":" + str([",".join(item) for item in self.frame.astype(str)])
+        return "@" + str(self.time_us) + "[" + str(self.dim) + "]:" +\
+            str([",".join(item) for item in self.frame.astype(str)])
 
     @property
     def dim(self):
@@ -37,7 +38,7 @@ class MLX90640RawFrame(logger.LoggingClass):
         """
         This method processes the given frame in order to analyze the thermal resistance of the image.
         """
-        self._l.debug(f"frame = {str(self.frame)}")
+        pass # self._l.debug(f"frame = {str(self)}")
 
 
 class MLX90640RawDataProcessor(logger.LoggingClass):
@@ -65,6 +66,8 @@ class MLX90640RawDataProcessor(logger.LoggingClass):
         raw_filepath - path to the binary file with the RAW frames
         px_distance_mm=10 - mm of distance from P0 to P1 or P2
         """
+        super(MLX90640RawDataProcessor, self).__init__()
+
         self.fps = fps
         self.distance_mm = distance_mm
         self.raw_filepath = raw_filepath
@@ -87,6 +90,7 @@ class MLX90640RawDataProcessor(logger.LoggingClass):
                 try:
 
                     array = np.fromfile(f, dtype=np.float32, count=self.PIXELS_FRAME)
+                    self._l.debug(f"array[{len(array)}] = {array}")
                     frame = MLX90640RawFrame(array.reshape(self.FRAME_SHAPE), time_us)
                     self.frames.append(frame)
                     time_us += self._timestep_us
