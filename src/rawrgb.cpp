@@ -204,11 +204,11 @@ int main(int argc, char *argv[]){
         MLX90640_CalculateTo(frame, &mlx90640, emissivity, eTa, mlx90640To); //calculate temprature of all pixels, base on emissivity of object
 
         //Fill image array with false-colour data (raw RGB image with 24 x 32 x 24bit per pixel)
-        for(int y = 0; y < 24; y++){
-            for(int x = 0; x < 32; x++){
+        for (int y = 0; y < 24; y++) {
+            for (int x = 0; x < 32; x++) {
                 float val = mlx90640To[32 * (23-y) + x];
                 put_pixel_false_colour(image, x, y, val);
-                pixels[y*32+x] = val;
+                pixels[x + 32*y] = val;
             }
         }
 
