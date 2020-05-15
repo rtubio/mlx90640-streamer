@@ -16,6 +16,11 @@ reader = reader
 reader_objects = $(addsuffix .o,$(addprefix $(SRC_DIR), $(reader)))
 reader_output = $(addprefix $(BUILD_DIR), $(reader))
 
+rawrgb = rawrgb
+rawrgb_objects = $(addsuffix .o,$(addprefix $(SRC_DIR), $(rawrgb)))
+rawrgb_output = $(addprefix $(BUILD_DIR), $(rawrgb))
+
+
 #PREFIX is environment variable, but if it is not set, then set default value
 ifeq ($(PREFIX),)
 	PREFIX = /usr/local
@@ -25,7 +30,7 @@ ifeq ($(I2C_MODE), LINUX)
 	I2C_LIBS =
 endif
 
-all: init libMLX90640_API.a libMLX90640_API.so streamer reader post
+all: init libMLX90640_API.a libMLX90640_API.so streamer reader rawrgb post
 
 pristine: all clean-objects
 
@@ -39,6 +44,7 @@ post:
 
 streamer: $(streamer_output)
 reader: $(reader_output)
+rawrgb: $(rawrgb_output)
 
 libMLX90640_API.so: lib/MLX90640_API.o lib/MLX90640_$(I2C_MODE)_I2C_Driver.o
 	$(CXX) -fPIC -shared $^ -o $@ $(I2C_LIBS)
@@ -55,12 +61,18 @@ $(streamer_output) : CXXFLAGS+=-I$(LIB_DIR) -std=c++11
 $(reader_objects) : CXXFLAGS+=-std=c++11
 $(reader_output) : CXXFLAGS+=-I$(LIB_DIR) -std=c++11
 
+$(rawrgb_objects) : CXXFLAGS+=-std=c++11
+$(rawrgb_output) : CXXFLAGS+=-I$(LIB_DIR) -std=c++11
+
 lib/interpolate.o : CC=$(CXX) -std=c++11
 
 $(BUILD_DIR)streamer: $(SRC_DIR)streamer.o libMLX90640_API.a
 	$(CXX) -L$(LIB_DIR) $^ -o $@ $(I2C_LIBS)
 
 $(BUILD_DIR)reader: $(SRC_DIR)reader.o libMLX90640_API.a
+	$(CXX) -L$(LIB_DIR) $^ -o $@ $(I2C_LIBS)
+
+$(BUILD_DIR)rawrgb: $(SRC_DIR)rawrgb.o libMLX90640_API.a
 	$(CXX) -L$(LIB_DIR) $^ -o $@ $(I2C_LIBS)
 
 bcm2835: bcm2835-1.55

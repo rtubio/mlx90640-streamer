@@ -7,7 +7,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <errno.h>
-#include "headers/MLX90640_API.h"
+#include "MLX90640_API.h"
 
 /*
  * rawrgb
@@ -208,7 +208,7 @@ int main(int argc, char *argv[]){
             for(int x = 0; x < 32; x++){
                 float val = mlx90640To[32 * (23-y) + x];
                 put_pixel_false_colour(image, x, y, val);
-                pixels[x, y] = val
+                pixels[x, y] = val;
             }
         }
 
