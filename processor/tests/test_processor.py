@@ -5,14 +5,20 @@ from processor import processor
 
 class MLX90640Processor(unittest.TestCase):
 
-    datasets = [
-        (15.0, 8, 'datasets/ds-1-132K.raw'),
-        (15.0, 8, 'datasets/ds-2-200K.raw'),
-        (15.0, 8, 'datasets/ds-3-150K-tachiuo.raw'),
-        (15.0, 4, 'datasets/ds-4-tachiuo.raw'),
-        (15.0, 4, 'datasets/ds-5-tachiuo.raw')
-    ]
+    DATASET_DIR = 'datasets'
+    DATASET_EXT = '.raw'
+
+    def __init__(self, *args, **kwargs):
+        super(MLX90640Processor, self).__init__(*args, **kwargs)
+
+        self.datasets = [
+            (int(f.split('-')[1]), int(f.split('-')[2]), os.path.join(MLX90640Processor.DATASET_DIR, f))
+            for f in os.listdir(MLX90640Processor.DATASET_DIR)
+            if os.path.isfile(os.path.join(MLX90640Processor.DATASET_DIR, f))
+                and f.endswith(MLX90640Processor.DATASET_EXT)
+        ]
 
     def test_process(self):
 
-        test_object = processor.MLX90640Processor(*self.datasets[4])
+        print(f"datasets={self.datasets}")
+        test_object = processor.MLX90640Processor(*self.datasets[0], plot_frames=False)
