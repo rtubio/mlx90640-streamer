@@ -10,9 +10,5 @@ class MLX90640Processor(unittest.TestCase):
     def setUp(self):
         self.dsmanager = dataset.DatasetsManager(self.DATASET_DIR)
 
-    def test_process(self):
-
-        test_object = processor.MLX90640Processor(
-            *self.dsmanager.datasets[0],
-            plot_frames=True
-        )
+    def test_reference_sample(self):
+        test_object = processor.MLX90640Processor(*self.dsmanager.datasets[0], plot_frames=True)
