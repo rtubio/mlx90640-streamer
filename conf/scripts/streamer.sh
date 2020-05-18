@@ -9,4 +9,4 @@ logger "[info, $0] Launching streamer to <$HOST:$PORT> with fps ($FPS)"
 # /usr/local/bin/mlx90640-streamer $FPS "2>$DATASETBIN" | \
 #  gst-launch-1.0 fdsrc blocksize=2304 ! udpsink host=$HOST port=$PORT
 
-/usr/local/bin/rawrgb $FPS "2>$DATASETBIN" | gst-launch-1.0 fdsrc blocksize=2304 ! udpsink host=$HOST port=$PORT
+/usr/local/bin/rawrgb $FPS 2>"$DATASETBIN" | gst-launch-1.0 fdsrc blocksize=2304 ! udpsink host=$HOST port=$PORT
