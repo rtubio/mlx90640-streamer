@@ -99,7 +99,7 @@ purge: clean
 install: install-libs
 	install -d $(DESTDIR)$(PREFIX)/bin/
 	install -m 550 $(BUILD_DIR)$(STREAMER_BIN) $(DESTDIR)$(PREFIX)/bin/$(STREAMER_BIN)
-	install -m 550 $(BUILD_DIR)$(RAWRG_BIN) $(DESTDIR)$(PREFIX)/bin/$(RAWRGB_BIN)
+	install -m 550 $(BUILD_DIR)$(RAWRGB_BIN) $(DESTDIR)$(PREFIX)/bin/$(RAWRGB_BIN)
 	chown $(SERVICE_USER):$(SERVICE_USER) $(DESTDIR)$(PREFIX)/bin/$(STREAMER_BIN)
 
 install-libs:

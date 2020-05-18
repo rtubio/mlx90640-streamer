@@ -155,6 +155,6 @@ WantedBy=multi-user.target
 load_conf
 configure_os
 setup_pyenv
-make pristine && sudo make install
+make && sudo make install
 create_streamer_conf
 configure_systemd
