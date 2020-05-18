@@ -21,4 +21,4 @@ class MLX90640Processor(unittest.TestCase):
     def test_process(self):
 
         print(f"datasets={self.datasets}")
-        test_object = processor.MLX90640Processor(*self.datasets[0], plot_frames=False)
+        test_object = processor.MLX90640Processor(*self.datasets[0], plot_frames=True)

@@ -1,6 +1,7 @@
 """This is the processor that digests the raw data from MLX90640 and analyzes it."""
 
 import argparse
+import matplotlib as mp
 import matplotlib.pyplot as pl
 import numpy as np
 import os
@@ -15,7 +16,7 @@ class MLX90640Frame(logger.LoggingClass):
     This is an array of floats, with 32x24 elements (MLX90640 pixels)
     """
 
-    def __init__(self, frame, time_us, plot=True):
+    def __init__(self, frame, time_us, plot_frame=True):
         """Default constructor
         frame - array with the pixel data
         time_us - timestamp (in microseconds) at which the image was taken
@@ -25,7 +26,7 @@ class MLX90640Frame(logger.LoggingClass):
 
         self.frame = frame
         self.time_us = time_us
-        self.plot = plot
+        self.plot_frame = plot_frame
 
         self.image_filename = "-".join([MLX90640Processor.dataset_name, "{:.0f}".format(self.time_us)]) + '.png'
         self.image_filepath = os.path.join(MLX90640Processor.dataset_dirpath, self.image_filename)
@@ -55,30 +56,30 @@ class MLX90640Frame(logger.LoggingClass):
     def temperature(self, coordinates):
         return self.frame[coordinates[1], coordinates[0]]
 
-    def _annotateTemperature(self, coordinates, temperature, fontsize=6, shift_x=2, shift_y=0, label=""):
+    def _annotateTemperature(self, coordinates, temperature, shift_x=2, shift_y=0, label=""):
         pl.text(
             coordinates[0]+shift_x, coordinates[1]+shift_y, f"{label}:{temperature:.1f}",
-            horizontalalignment='right', verticalalignment='center', fontsize=fontsize
+            horizontalalignment='right', verticalalignment='center'
         )
         pl.plot(*coordinates, 'X')
 
-    def plot(self, fontsize=6):
+    def plot(self, cmap='nipy_spectral', dpi=300):
 
         fig, ax = pl.subplots()
-        fig.suptitle(f"{MLX90640Processor.dataset_name}@{self.time_us/1e6:3.3f}s, dT = {self.diff_t_12:2.3f} (degC)")
+        fig.suptitle(f"{MLX90640Processor.dataset_name}@{self.time_us/1e6:3.3f} s, dT = {self.diff_t_12:2.3f} (degC)")
         image = pl.imshow(
-            self.frame, aspect='auto', cmap=pl.get_cmap('nipy_spectral'),
+            self.frame, aspect='auto', cmap=pl.get_cmap(cmap),
             vmin=MLX90640Processor.T_MIN_C, vmax=MLX90640Processor.T_MAX_C
         )
         fig.colorbar(image)
 
-        self._annotateTemperature(MLX90640Processor.REF_PIXEL_0, self.ref_t_0, fontsize=fontsize)
-        self._annotateTemperature(MLX90640Processor.REF_PIXEL_1, self.ref_t_1, fontsize=fontsize)
-        self._annotateTemperature(MLX90640Processor.REF_PIXEL_2, self.ref_t_2, fontsize=fontsize)
-        self._annotateTemperature(self.min_pixel, self.min_value, label="min", fontsize=fontsize)
-        self._annotateTemperature(self.max_pixel, self.max_value, label="max", fontsize=fontsize)
+        self._annotateTemperature(MLX90640Processor.REF_PIXEL_0, self.ref_t_0)
+        self._annotateTemperature(MLX90640Processor.REF_PIXEL_1, self.ref_t_1)
+        self._annotateTemperature(MLX90640Processor.REF_PIXEL_2, self.ref_t_2)
+        self._annotateTemperature(self.min_pixel, self.min_value, label="min")
+        self._annotateTemperature(self.max_pixel, self.max_value, label="max")
 
-        pl.savefig(self.image_filepath, dpi=300)
+        pl.savefig(self.image_filepath, dpi=dpi)
         pl.close()
 
     def process(self):
@@ -101,7 +102,7 @@ class MLX90640Frame(logger.LoggingClass):
         result = np.where(self.frame == self.max_value)
         self.max_pixel = (result[1][0], result[0][0])
 
-        if self.plot:
+        if self.plot_frame:
             self.plot()
 
 
@@ -162,7 +163,7 @@ class MLX90640Processor(logger.LoggingClass):
         self._l.debug(f"> r_pix_1 = ({self.REF_PIXEL_1})")
         self._l.debug(f"> r_pix_2 = ({self.REF_PIXEL_2})")
 
-    def __init__(self, fps, distance_mm, raw_filepath, px_distance_mm=10, plot_frames=True):
+    def __init__(self, fps, distance_mm, raw_filepath, px_distance_mm=10, plot_frames=True, fontsize=6):
         """Default constructor
         fps - frames per second, necessary to calculate the timeline
         distance_mm - mm of distance from the camera to the target material
@@ -177,9 +178,13 @@ class MLX90640Processor(logger.LoggingClass):
         self.raw_filepath = raw_filepath
         self.px_distance_mm = px_distance_mm
         self.plot_frames = plot_frames
+        self.fontsize = fontsize
 
         self.timestep_us = 1e6 / self.fps
         self.frames = []
+
+        font = {'family': 'normal', 'weight': 'bold', 'size': self.fontsize}
+        mp.rc('font', **font)
 
         MLX90640Processor.dataset_name = pathlib.Path(self.raw_filepath).stem
         MLX90640Processor.dataset_dirpath = os.path.join(
@@ -210,7 +215,7 @@ class MLX90640Processor(logger.LoggingClass):
                 try:
 
                     array = np.fromfile(f, dtype=np.float32, count=self.PIXELS_FRAME)
-                    frame = MLX90640Frame(array.reshape(self.FRAME_SHAPE), time_us, plot=self.plot_frames)
+                    frame = MLX90640Frame(array.reshape(self.FRAME_SHAPE), time_us, plot_frame=self.plot_frames)
                     self.frames.append(frame)
                     time_us += self.timestep_us
 
@@ -258,36 +263,34 @@ class MLX90640Processor(logger.LoggingClass):
 
         self.plot()
 
-    def plot(self, fontsize=6):
+    def plot(self):
         """
         This method plots the resulting time-dependent variables.
         NOTICE: it requires of postprocess() to have been correctly executed.
         """
         fig, ax = pl.subplots()
-        fig.suptitle(
-            f"{self.dataset_name}, {self.duration:3.3f}s, dT = {self.stable_dT:2.3f} (degC)",
-            fontsize=fontsize
-        )
+        fig.suptitle(f"{self.dataset_name}, {self.duration:3.3f}s, dT = {self.stable_dT:2.3f} (degC)")
 
-        pl.plot(self.t,     self.t0,    label="REF#0")
-        pl.plot(self.t,     self.t1,    label="REF#1")
-        pl.plot(self.t,     self.t2,    label="REF#2")
+        pl.plot(self.t,     self.t0,    linewidth=0.75, label="REF#0")
+        pl.plot(self.t,     self.t1,    linewidth=0.75, label="REF#1")
+        pl.plot(self.t,     self.t2,    linewidth=0.75, label="REF#2")
 
-        pl.plot(self.t,     self.diff,  label="DIFF(#1,#2)")
-        pl.plot(self.t,     self.max,   label="max")
-        pl.plot(self.t,     self.min,   label="min")
+        pl.plot(self.t,     self.diff,  linewidth=0.75, label="DIFF(#1,#2)")
+        pl.plot(self.t,     self.max,   linewidth=0.75, label="max")
+        pl.plot(self.t,     self.min,   linewidth=0.75, label="min")
 
-        pl.xlabel(f"time (s) [{self.t[0]:2.1f}, {self.t[-1]:2.1f}]", fontsize=fontsize)
-        pl.ylabel(f"temperature (degC) [{np.min(self.min):2.3f}, {np.max(self.max):2.3f}]", fontsize=fontsize)
+        pl.xlabel(f"time (s) [{self.t[0]:2.1f}, {self.t[-1]:2.1f}]")
+        pl.ylabel(f"temperature (degC) [{np.min(self.min):2.3f}, {np.max(self.max):2.3f}]")
 
-        pl.legend(fontsize=fontsize)
+        pl.grid(linestyle=":", linewidth=0.5)
+        pl.legend()
 
         pl.savefig(self.image_filepath, dpi=300)
         pl.close()
 
     @staticmethod
     def create(argv):
-        # Basic class static factory method.
+        """Factory method to instantiate the class using the arguments from the CLI"""
 
         parser = argparse.ArgumentParser(description="Process a file with raw data from MLX90640")
         parser.add_argument(
