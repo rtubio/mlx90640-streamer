@@ -5,6 +5,7 @@ SRC_DIR = src/
 BUILD_DIR = .build/
 LIB_DIR = lib/
 STREAMER_BIN = mlx90640-streamer
+RAWRGB_BIN = rawrgb
 READER_BIN = mlx90640-reader
 SERVICE_USER = mlx90640
 
@@ -98,6 +99,7 @@ purge: clean
 install: install-libs
 	install -d $(DESTDIR)$(PREFIX)/bin/
 	install -m 550 $(BUILD_DIR)$(STREAMER_BIN) $(DESTDIR)$(PREFIX)/bin/$(STREAMER_BIN)
+	install -m 550 $(BUILD_DIR)$(RAWRG_BIN) $(DESTDIR)$(PREFIX)/bin/$(RAWRGB_BIN)
 	chown $(SERVICE_USER):$(SERVICE_USER) $(DESTDIR)$(PREFIX)/bin/$(STREAMER_BIN)
 
 install-libs:
