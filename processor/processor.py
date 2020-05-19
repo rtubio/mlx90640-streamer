@@ -34,53 +34,74 @@ class MLX90640Frame(logger.LoggingClass):
         self.process()
 
     def __str__(self):
+        """Human readable representation of this frame"""
         return "@" + str(self.time_us) + "[" + str(self.dim) + "]:" +\
             str([",".join(item) for item in self.frame.astype(str)])
 
     @property
     def min(self):
+        """Minimum temperature within this frame"""
         return self.min_value
 
     @property
     def max(self):
+        """Maximum temperature within this frame"""
         return self.max_value
 
     @property
     def dim(self):
+        """Frame PIXEL dimensions (X, Y)"""
         return self.frame.shape
 
     @property
     def size(self):
+        """Size in bytes"""
         return self.dim[0] * self.dim[1] * self.SIZE_PIXEL
 
     def temperature(self, coordinates):
+        """Temperature at the requested coordinates"""
         return self.frame[coordinates[1], coordinates[0]]
 
     def _annotateTemperature(self, coordinates, temperature, shift_x=2, shift_y=0, label=""):
+        """Annotation with the valueof the temperature"""
         pl.text(
             coordinates[0]+shift_x, coordinates[1]+shift_y, f"{label}:{temperature:.1f}",
             horizontalalignment='right', verticalalignment='center'
         )
         pl.plot(*coordinates, 'X')
 
-    def plot(self, cmap='nipy_spectral', dpi=300):
+    def plot(self):
+        """Plot Method
+        This method plots the frame in a 2D diagram, representing the values of the temperature for each of the pixels.
+        """
 
         fig, ax = pl.subplots()
         fig.suptitle(f"{MLX90640Processor.dataset_name}@{self.time_us/1e6:3.3f} s, dT = {self.diff_t_12:2.3f} (degC)")
-        image = pl.imshow(
+
+        self._plot_frame(fig, ax)
+
+        pl.savefig(self.image_filepath)
+        pl.close()
+
+    def _plot_frame(self, fig, ax, cmap='jet'):
+        """Plot Method (PRIVATE)
+        This method plots the 2D diagram with the frame in the given figure and axis.
+        fig - Matplotlib figure where to plot the frame
+        ax - Axes of the Matplotlib figure where to plot the frame
+        cmap='nipy_spectral' - Colormap used for the representation of the temperature values
+        """
+
+        image = ax.imshow(
             self.frame, aspect='auto', cmap=pl.get_cmap(cmap),
             vmin=MLX90640Processor.T_MIN_C, vmax=MLX90640Processor.T_MAX_C
         )
-        fig.colorbar(image)
+        fig.colorbar(image, aspect=100, ax=ax)
 
         self._annotateTemperature(MLX90640Processor.REF_PIXEL_0, self.ref_t_0)
         self._annotateTemperature(MLX90640Processor.REF_PIXEL_1, self.ref_t_1)
         self._annotateTemperature(MLX90640Processor.REF_PIXEL_2, self.ref_t_2)
         self._annotateTemperature(self.min_pixel, self.min_value, label="min")
         self._annotateTemperature(self.max_pixel, self.max_value, label="max")
-
-        pl.savefig(self.image_filepath, dpi=dpi)
-        pl.close()
 
     def process(self):
         """
@@ -128,16 +149,17 @@ class MLX90640Processor(logger.LoggingClass):
     FOV_X_DEG       = 110.
     FOV_Y_DEG       = 75.
     PROJ_FACTOR     = 1./(4.*np.pi)
-    SENSOR_XSIDE_MM = 2
-    PIXEL_XSIDE_UM  = int((1e3 * SENSOR_XSIDE_MM) / PIXELS_X)
-    SENSOR_YSIDE_MM = 3
-    PIXEL_YSIDE_UM  = int((1e3 * SENSOR_YSIDE_MM) / PIXELS_Y)
+    SENSOR_XSIDE_MM = 2.
+    PIXEL_XSIDE_MM  = SENSOR_XSIDE_MM / PIXELS_X
+    SENSOR_YSIDE_MM = 3.
+    PIXEL_YSIDE_MM  = SENSOR_YSIDE_MM / PIXELS_Y
+    FOCAL_LENGTH_MM = 3.
     SIZE_PIXEL      = np.dtype(np.float32).itemsize
     SIZE_FRAME      = PIXELS_FRAME * SIZE_PIXEL
     FRAME_SHAPE     = [PIXELS_Y, PIXELS_X]
 
-    T_MAX_C         = 100
-    T_MIN_C         = -15
+    T_MAX_C         = 100.
+    T_MIN_C         = -15.
     T_RANGE         = T_MAX_C - T_MIN_C
 
     def calculate_reference_pixels(self):
@@ -148,8 +170,8 @@ class MLX90640Processor(logger.LoggingClass):
         """
 
         self.gsd_mm = (
-            0.5*self.PIXEL_XSIDE_UM/1e3 + self.distance_mm*np.tan(self.FOV_X_DEG*self.PROJ_FACTOR),
-            0.5*self.PIXEL_YSIDE_UM/1e3 + self.distance_mm*np.tan(self.FOV_Y_DEG*self.PROJ_FACTOR)
+            self.PIXEL_XSIDE_MM * self.distance_mm / self.FOCAL_LENGTH_MM,
+            self.PIXEL_YSIDE_MM * self.distance_mm / self.FOCAL_LENGTH_MM
         )
         self.ref_pixels_distance = (
             int(self.px_distance_mm / self.gsd_mm[0]),
@@ -169,6 +191,7 @@ class MLX90640Processor(logger.LoggingClass):
             int(self.PIXELS_Y * 0.5)
         )
 
+        self._l.debug(f"gsd (mm) = {self.gsd_mm}")
         self._l.debug(f"> r_pix_0 = ({self.REF_PIXEL_0})")
         self._l.debug(f"> r_pix_1 = ({self.REF_PIXEL_1})")
         self._l.debug(f"> r_pix_2 = ({self.REF_PIXEL_2})")
@@ -176,7 +199,8 @@ class MLX90640Processor(logger.LoggingClass):
     def __init__(
         self,
         fps, distance_mm, raw_filepath,
-        px_distance_mm=10, plot_frames=True, jump_frames=2, fontsize=6
+        px_distance_mm=10,
+        plot_frames=True, plot_general=False, jump_frames=2, fontsize=10
     ):
         """Default constructor
         fps - frames per second, necessary to calculate the timeline
@@ -194,6 +218,7 @@ class MLX90640Processor(logger.LoggingClass):
         self.raw_filepath = raw_filepath
         self.px_distance_mm = px_distance_mm
         self.plot_frames = plot_frames
+        self.plot_general = plot_general
         self.jump_frames = jump_frames
         self.fontsize = fontsize
 
@@ -202,6 +227,7 @@ class MLX90640Processor(logger.LoggingClass):
 
         font = {'family': 'normal', 'weight': 'bold', 'size': self.fontsize}
         mp.rc('font', **font)
+        mp.rcParams.update({'savefig.dpi': 150})
 
         MLX90640Processor.dataset_name = pathlib.Path(self.raw_filepath).stem
         MLX90640Processor.dataset_dirpath = os.path.join(
@@ -287,34 +313,55 @@ class MLX90640Processor(logger.LoggingClass):
 
         self.frames2vectors()
 
-        self.stable_dT = np.average(self.diff[int(self.duration*0.5):-1])
+        self.max_dT_value = np.max(self.diff)
+        self.max_dT_index = np.where(self.diff == self.max_dT_value)[0][0]
+        self.max_dT_time  = self.max_dT_index / self.fps
 
-        self.plot()
+        self._l.debug(f"MAX = ({self.max_dT_time}, {self.max_dT_value})")
+
+        if self.plot_general:
+            self.plot()
 
     def plot(self):
         """
         This method plots the resulting time-dependent variables.
         NOTICE: it requires of postprocess() to have been correctly executed.
         """
-        fig, ax = pl.subplots()
-        fig.suptitle(f"{self.dataset_name}, {self.duration:3.3f}s, dT = {self.stable_dT:2.3f} (degC)")
+        fig, ax = pl.subplots(nrows=1, ncols=2, figsize=(11.69,8.27))
+        pl.subplots_adjust(left=0.05, right=0.995, wspace=0.075, top=0.925, bottom=0.05)
+        fig.suptitle(f"{self.dataset_name}, {self.duration:3.3f}s, dT = {self.max_dT_value:2.1f} (degC)")
 
-        pl.plot(self.t,     self.t0,    linewidth=0.75, label="REF#0")
-        pl.plot(self.t,     self.t1,    linewidth=0.75, label="REF#1")
-        pl.plot(self.t,     self.t2,    linewidth=0.75, label="REF#2")
+        self._plot_general(ax[0])
+        self.frames[self.max_dT_index]._plot_frame(fig, ax[1])
 
-        pl.plot(self.t,     self.diff,  linewidth=0.75, label="DIFF(#1,#2)")
-        pl.plot(self.t,     self.max,   linewidth=0.75, label="max")
-        pl.plot(self.t,     self.min,   linewidth=0.75, label="min")
-
-        pl.xlabel(f"time (s) [{self.t[0]:2.1f}, {self.t[-1]:2.1f}]")
-        pl.ylabel(f"temperature (degC) [{np.min(self.min):2.3f}, {np.max(self.max):2.3f}]")
-
-        pl.grid(linestyle=":", linewidth=0.5)
-        pl.legend()
-
-        pl.savefig(self.image_filepath, dpi=300)
+        pl.savefig(self.image_filepath)
         pl.close()
+
+    def _plot_general(self, ax):
+        """
+        This method plots the general results of the experiment in the given axis.
+        """
+        ax.plot(self.t,     self.t0,    linewidth=0.75, label="Tref#0")
+        ax.plot(self.t,     self.t1,    linewidth=0.75, label="Tref#1")
+        ax.plot(self.t,     self.t2,    linewidth=0.75, label="Tref#2")
+
+        ax.plot(self.t,     self.diff,  linewidth=0.75, label="diff")
+        ax.plot(self.t,     self.max,   linewidth=0.75, label="max")
+        ax.plot(self.t,     self.min,   linewidth=0.75, label="min")
+
+        ax.set_xlabel(f"time (s) [{self.t[0]:2.1f}, {self.t[-1]:2.1f}]")
+        ax.set_ylabel(f"temperature (degC) [{np.min(self.min):2.3f}, {np.max(self.max):2.3f}]")
+
+        ax.axvline(x=self.max_dT_time, linewidth=0.5, linestyle="-.", color='black')
+        ax.text(
+            self.max_dT_time*0.975, self.max_dT_value*1.125,
+            f"{self.max_dT_value:.1f}",
+            horizontalalignment='right', verticalalignment='center'
+        )
+        ax.plot(self.max_dT_time, self.max_dT_value, '.', color='black')
+
+        ax.grid(linestyle=":", linewidth=0.5)
+        ax.legend()
 
     @staticmethod
     def create(argv):
