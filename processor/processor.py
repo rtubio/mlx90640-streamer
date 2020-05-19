@@ -111,13 +111,23 @@ class MLX90640Processor(logger.LoggingClass):
     This class processes the raw binary data as gathered from MLX90640.
     Frames are suppossed to be stored sequentially within the file, at a rate of FPS
     frames per second. The value of FPS determines the time distance in between frames.
+
+    * The projection factor (PROJ_FACTOR) is a conversion factor that accounts for the following two
+        issues to transform the FOV angle in degrees (as given by the camera manufacturer), into the
+        angle needed to calculate the GSD at a given distance:
+
+        (a) FOV represents a "side-to-side" angle, we only need "side-to-normal", half that angle (1/2).
+        (b) the tangent function in numpy accepts only radians, not degrees (1/(2*np.pi))
+
+        ... therefore, PROJ_FACTOR = (a) * (b) = (1/2) * (1/(2*np.pi)) = (1/(4*np.pi))
     """
 
     PIXELS_X        = 32
     PIXELS_Y        = 24
     PIXELS_FRAME    = PIXELS_X * PIXELS_Y
-    FOV_X_DEG       = 110. / np.pi
-    FOV_Y_DEG       = 75.  / np.pi
+    FOV_X_DEG       = 110.
+    FOV_Y_DEG       = 75.
+    PROJ_FACTOR     = 1./(4.*np.pi)
     SENSOR_XSIDE_MM = 2
     PIXEL_XSIDE_UM  = int((1e3 * SENSOR_XSIDE_MM) / PIXELS_X)
     SENSOR_YSIDE_MM = 3
@@ -138,8 +148,8 @@ class MLX90640Processor(logger.LoggingClass):
         """
 
         self.gsd_mm = (
-            0.5*self.PIXEL_XSIDE_UM/1e3 + self.distance_mm*np.tan(self.FOV_X_DEG),
-            0.5*self.PIXEL_YSIDE_UM/1e3 + self.distance_mm*np.tan(self.FOV_Y_DEG)
+            0.5*self.PIXEL_XSIDE_UM/1e3 + self.distance_mm*np.tan(self.FOV_X_DEG*self.PROJ_FACTOR),
+            0.5*self.PIXEL_YSIDE_UM/1e3 + self.distance_mm*np.tan(self.FOV_Y_DEG*self.PROJ_FACTOR)
         )
         self.ref_pixels_distance = (
             int(self.px_distance_mm / self.gsd_mm[0]),
@@ -163,13 +173,19 @@ class MLX90640Processor(logger.LoggingClass):
         self._l.debug(f"> r_pix_1 = ({self.REF_PIXEL_1})")
         self._l.debug(f"> r_pix_2 = ({self.REF_PIXEL_2})")
 
-    def __init__(self, fps, distance_mm, raw_filepath, px_distance_mm=10, plot_frames=True, fontsize=6):
+    def __init__(
+        self,
+        fps, distance_mm, raw_filepath,
+        px_distance_mm=10, plot_frames=True, jump_frames=2, fontsize=6
+    ):
         """Default constructor
         fps - frames per second, necessary to calculate the timeline
         distance_mm - mm of distance from the camera to the target material
         raw_filepath - path to the binary file with the RAW frames
         px_distance_mm=10 - mm of distance from P0 to P1 or P2
         plot_frames=True - flag that indicates whether each frame should be plotted
+        jump_frames=2 - fraction of frames to be plot
+        fontsize=6 - default fontsize for the generated figures
         """
         super(MLX90640Processor, self).__init__()
 
@@ -178,6 +194,7 @@ class MLX90640Processor(logger.LoggingClass):
         self.raw_filepath = raw_filepath
         self.px_distance_mm = px_distance_mm
         self.plot_frames = plot_frames
+        self.jump_frames = jump_frames
         self.fontsize = fontsize
 
         self.timestep_us = 1e6 / self.fps
@@ -208,6 +225,8 @@ class MLX90640Processor(logger.LoggingClass):
             > The data is to be stored as 24 arrays of 32 consecutive float32 numbers.
         """
         time_us = 0.0
+        i = 0
+        plot_frame = False
 
         with open(self.raw_filepath, mode='rb') as f:
             while True:
@@ -215,8 +234,17 @@ class MLX90640Processor(logger.LoggingClass):
                 try:
 
                     array = np.fromfile(f, dtype=np.float32, count=self.PIXELS_FRAME)
-                    frame = MLX90640Frame(array.reshape(self.FRAME_SHAPE), time_us, plot_frame=self.plot_frames)
+                    array = array.reshape(self.FRAME_SHAPE)
+
+                    if self.plot_frames and (i % self.jump_frames == 0):
+                        plot_frame = True
+                    else:
+                        plot_frame = False
+
+                    frame = MLX90640Frame(array, time_us, plot_frame=plot_frame)
                     self.frames.append(frame)
+
+                    i += 1
                     time_us += self.timestep_us
 
                 except ValueError as ex:

@@ -45,7 +45,7 @@ class DatasetsManager(logger.LoggingClass):
             int(f.split('-')[2]),
             os.path.join(self.basedir, f)
         )
-            for f in os.listdir(self.basedir)
+            for f in sorted(os.listdir(self.basedir))
                 if os.path.isfile(os.path.join(self.basedir, f))
                     and f.endswith(DatasetsManager.DATASET_EXT)
         ]
