@@ -88,14 +88,14 @@ class MLX90640Frame(logger.LoggingClass):
         This method plots the 2D diagram with the frame in the given figure and axis.
         fig - Matplotlib figure where to plot the frame
         ax - Axes of the Matplotlib figure where to plot the frame
-        cmap='nipy_spectral' - Colormap used for the representation of the temperature values
+        cmap='jet' - Colormap used for the representation of the temperature values, 'nipy_spectral'
         """
 
         image = ax.imshow(
             self.frame, aspect='auto', cmap=pl.get_cmap(cmap),
             vmin=MLX90640Processor.T_MIN_C, vmax=MLX90640Processor.T_MAX_C
         )
-        fig.colorbar(image, aspect=100, ax=ax)
+        fig.colorbar(image, ax=ax, fraction=0.0825, aspect=100)
 
         self._annotateTemperature(MLX90640Processor.REF_PIXEL_0, self.ref_t_0)
         self._annotateTemperature(MLX90640Processor.REF_PIXEL_1, self.ref_t_1)
