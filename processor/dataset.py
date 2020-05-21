@@ -2,9 +2,9 @@
 @author rtpardavila[at]gmail[dot]com
 """
 
-import os
+import argparse, os, sys
 
-from xpython.common import logger
+from xpython.common import logger, files
 
 
 class DatasetsManager(logger.LoggingClass):
@@ -49,3 +49,34 @@ class DatasetsManager(logger.LoggingClass):
                 if os.path.isfile(os.path.join(self.basedir, f))
                     and f.endswith(DatasetsManager.DATASET_EXT)
         ]
+
+    def __str__(self):
+        return "\n\t".join(["FPS = {:2}, file = {}".format(ds[0], ds[2]) for ds in self.datasets])
+
+    def list(self):
+        self._l.info(f"datasets = \n\t{str(self)}")
+
+    @staticmethod
+    def create(argv):
+        """Factory method to instantiate the class using the arguments from the CLI"""
+
+        parser = argparse.ArgumentParser(description="Manages the datasets for the thermalbench/MLX90640")
+        parser.add_argument(
+            "-l", "--list",
+            action='store_true', required=False,
+            help="Lists the available dataset files"
+        )
+        parser.add_argument(
+            "-d", "--directory",
+            type=files.is_writable_dir, metavar="FILE", default=os.getcwd(),
+            help="Directory with the datasets"
+        )
+
+        args = parser.parse_args(argv)
+
+        if 'list' in args:
+            DatasetsManager(args.directory).list()
+
+
+if __name__ == "__main__":
+    processor = DatasetsManager.create(sys.argv[1:])

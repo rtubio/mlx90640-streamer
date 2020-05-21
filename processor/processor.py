@@ -149,11 +149,14 @@ class MLX90640Processor(logger.LoggingClass):
     FOV_X_DEG       = 110.
     FOV_Y_DEG       = 75.
     PROJ_FACTOR     = 1./(4.*np.pi)
-    SENSOR_XSIDE_MM = 2.
-    PIXEL_XSIDE_MM  = SENSOR_XSIDE_MM / PIXELS_X
-    SENSOR_YSIDE_MM = 3.
-    PIXEL_YSIDE_MM  = SENSOR_YSIDE_MM / PIXELS_Y
-    FOCAL_LENGTH_MM = 3.
+
+    PIXEL_XSIDE_MM  = 100. / 1e3
+    PIXEL_YSIDE_MM  = 100. / 1e3
+    SENSOR_XSIDE_MM = PIXELS_X * PIXEL_XSIDE_MM
+    SENSOR_YSIDE_MM = PIXELS_Y * PIXEL_YSIDE_MM
+
+    FOCAL_LENGTH_MM = 2.1
+
     SIZE_PIXEL      = np.dtype(np.float32).itemsize
     SIZE_FRAME      = PIXELS_FRAME * SIZE_PIXEL
     FRAME_SHAPE     = [PIXELS_Y, PIXELS_X]
@@ -192,6 +195,8 @@ class MLX90640Processor(logger.LoggingClass):
         )
 
         self._l.debug(f"gsd (mm) = {self.gsd_mm}")
+        self._l.debug(f"PIXEL_XSIDE_MM = {self.PIXEL_XSIDE_MM}")
+        self._l.debug(f"PIXEL_YSIDE_MM = {self.PIXEL_YSIDE_MM}")
         self._l.debug(f"> r_pix_0 = ({self.REF_PIXEL_0})")
         self._l.debug(f"> r_pix_1 = ({self.REF_PIXEL_1})")
         self._l.debug(f"> r_pix_2 = ({self.REF_PIXEL_2})")
@@ -199,7 +204,7 @@ class MLX90640Processor(logger.LoggingClass):
     def __init__(
         self,
         fps, distance_mm, raw_filepath,
-        px_distance_mm=10,
+        px_distance_mm=20,
         plot_frames=True, plot_general=False, jump_frames=2, fontsize=10
     ):
         """Default constructor
@@ -317,8 +322,6 @@ class MLX90640Processor(logger.LoggingClass):
         self.max_dT_index = np.where(self.diff == self.max_dT_value)[0][0]
         self.max_dT_time  = self.max_dT_index / self.fps
 
-        self._l.debug(f"MAX = ({self.max_dT_time}, {self.max_dT_value})")
-
         if self.plot_general:
             self.plot()
 
@@ -329,7 +332,7 @@ class MLX90640Processor(logger.LoggingClass):
         """
         fig, ax = pl.subplots(nrows=1, ncols=2, figsize=(11.69,8.27))
         pl.subplots_adjust(left=0.05, right=0.995, wspace=0.075, top=0.925, bottom=0.05)
-        fig.suptitle(f"{self.dataset_name}, {self.duration:3.3f}s, dT = {self.max_dT_value:2.1f} (degC)")
+        fig.suptitle(f"{self.dataset_name}, {self.duration:3.3f} (s), dT = {self.max_dT_value:2.1f} (degC)")
 
         self._plot_general(ax[0])
         self.frames[self.max_dT_index]._plot_frame(fig, ax[1])
