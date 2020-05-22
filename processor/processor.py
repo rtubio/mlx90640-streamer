@@ -62,13 +62,13 @@ class MLX90640Frame(logger.LoggingClass):
         """Temperature at the requested coordinates"""
         return self.frame[coordinates[1], coordinates[0]]
 
-    def _annotateTemperature(self, coordinates, temperature, shift_x=2, shift_y=0, label=""):
+    def _annotateTemperature(self, ax, coordinates, temperature, shift_x=2, shift_y=0, label=""):
         """Annotation with the valueof the temperature"""
-        pl.text(
+        ax.text(
             coordinates[0]+shift_x, coordinates[1]+shift_y, f"{label}:{temperature:.1f}",
             horizontalalignment='right', verticalalignment='center'
         )
-        pl.plot(*coordinates, 'X')
+        ax.plot(*coordinates, 'X')
 
     def plot(self):
         """Plot Method
@@ -97,11 +97,11 @@ class MLX90640Frame(logger.LoggingClass):
         )
         fig.colorbar(image, ax=ax, fraction=0.0825, aspect=100)
 
-        self._annotateTemperature(MLX90640Processor.REF_PIXEL_0, self.ref_t_0)
-        self._annotateTemperature(MLX90640Processor.REF_PIXEL_1, self.ref_t_1)
-        self._annotateTemperature(MLX90640Processor.REF_PIXEL_2, self.ref_t_2)
-        self._annotateTemperature(self.min_pixel, self.min_value, label="min")
-        self._annotateTemperature(self.max_pixel, self.max_value, label="max")
+        self._annotateTemperature(ax, MLX90640Processor.REF_PIXEL_0, self.ref_t_0)
+        self._annotateTemperature(ax, MLX90640Processor.REF_PIXEL_1, self.ref_t_1)
+        self._annotateTemperature(ax, MLX90640Processor.REF_PIXEL_2, self.ref_t_2)
+        self._annotateTemperature(ax, self.min_pixel, self.min_value, label="min")
+        self._annotateTemperature(ax, self.max_pixel, self.max_value, label="max")
 
     def process(self):
         """
@@ -205,16 +205,17 @@ class MLX90640Processor(logger.LoggingClass):
         self,
         fps, distance_mm, raw_filepath,
         px_distance_mm=20,
-        plot_frames=True, plot_general=False, jump_frames=2, fontsize=10
+        plot_frames=True, plot_general=False, jump_frames=2,
+        fontsize=9
     ):
         """Default constructor
-        fps - frames per second, necessary to calculate the timeline
-        distance_mm - mm of distance from the camera to the target material
-        raw_filepath - path to the binary file with the RAW frames
-        px_distance_mm=10 - mm of distance from P0 to P1 or P2
-        plot_frames=True - flag that indicates whether each frame should be plotted
-        jump_frames=2 - fraction of frames to be plot
-        fontsize=6 - default fontsize for the generated figures
+        fps                 - frames per second, necessary to calculate the timeline
+        distance_mm         - mm of distance from the camera to the target material
+        raw_filepath        - path to the binary file with the RAW frames
+        px_distance_mm=10   - mm of distance from P0 to P1 or P2
+        plot_frames=True    - flag that indicates whether each frame should be plotted
+        jump_frames=2       - fraction of frames to be plot
+        fontsize=9          - default fontsize for the generated figures
         """
         super(MLX90640Processor, self).__init__()
 
@@ -330,41 +331,59 @@ class MLX90640Processor(logger.LoggingClass):
         This method plots the resulting time-dependent variables.
         NOTICE: it requires of postprocess() to have been correctly executed.
         """
-        fig, ax = pl.subplots(nrows=1, ncols=2, figsize=(11.69,8.27))
-        pl.subplots_adjust(left=0.05, right=0.995, wspace=0.075, top=0.925, bottom=0.05)
-        fig.suptitle(f"{self.dataset_name}, {self.duration:3.3f} (s), dT = {self.max_dT_value:2.1f} (degC)")
+        fig = pl.figure(constrained_layout=True, figsize=(11.69,8.27))
+        gs  = fig.add_gridspec(2, 2)
+        ax1 = fig.add_subplot(gs[:, 0])
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax3 = fig.add_subplot(gs[1, 1])
+        pl.subplots_adjust(left=0.05, right=0.995, wspace=0.075, top=0.925, bottom=0.075)
 
-        self._plot_general(ax[0])
-        self.frames[self.max_dT_index]._plot_frame(fig, ax[1])
+        fig.suptitle(f"{self.dataset_name}, {self.duration:3.3f} (s), dT = {self.max_dT_value:2.1f} (degC)")
+        ax2.set_title(f"@{self.max_dT_time:3.3f}, MAX(dT)")
+        ax3.set_title(f"@{self.t[-1]:3.3f}, FINAL")
+
+        self._plot_overall(ax1)
+        self.frames[self.max_dT_index]._plot_frame(fig, ax2)
+        self.frames[-1]._plot_frame(fig, ax3)
 
         pl.savefig(self.image_filepath)
         pl.close()
 
-    def _plot_general(self, ax):
+    def _plot_value_line(self, ax, time, value):
+        """
+        This method plots a vertical line at a given time,value pair, highlighting it
+        """
+
+        ax.axvline(x=time, linewidth=0.5, linestyle="-.", color='black')
+        ax.text(
+            time*0.975, value*1.125, f"{value:.1f}",
+            horizontalalignment='right', verticalalignment='center'
+        )
+        ax.plot(time, value, '.', color='black')
+
+    def _plot_overall(self, ax):
         """
         This method plots the general results of the experiment in the given axis.
         """
-        ax.plot(self.t,     self.t0,    linewidth=0.75, label="Tref#0")
-        ax.plot(self.t,     self.t1,    linewidth=0.75, label="Tref#1")
-        ax.plot(self.t,     self.t2,    linewidth=0.75, label="Tref#2")
+        ax.plot(self.t, self.t0,    linewidth=0.75, label="Tref#0")
+        ax.plot(self.t, self.t1,    linewidth=0.75, label="Tref#1")
+        ax.plot(self.t, self.t2,    linewidth=0.75, label="Tref#2")
 
-        ax.plot(self.t,     self.diff,  linewidth=0.75, label="diff")
-        ax.plot(self.t,     self.max,   linewidth=0.75, label="max")
-        ax.plot(self.t,     self.min,   linewidth=0.75, label="min")
+        ax.plot(self.t, self.diff,  linewidth=0.75, label="diff")
+        ax.plot(self.t, self.max,   linewidth=0.75, label="max")
+        ax.plot(self.t, self.min,   linewidth=0.75, label="min")
 
         ax.set_xlabel(f"time (s) [{self.t[0]:2.1f}, {self.t[-1]:2.1f}]")
         ax.set_ylabel(f"temperature (degC) [{np.min(self.min):2.3f}, {np.max(self.max):2.3f}]")
 
-        ax.axvline(x=self.max_dT_time, linewidth=0.5, linestyle="-.", color='black')
-        ax.text(
-            self.max_dT_time*0.975, self.max_dT_value*1.125,
-            f"{self.max_dT_value:.1f}",
-            horizontalalignment='right', verticalalignment='center'
-        )
-        ax.plot(self.max_dT_time, self.max_dT_value, '.', color='black')
+        self._plot_value_line(ax, self.max_dT_time, self.max_dT_value)
+        self._plot_value_line(ax, self.t[-1], self.diff[-1])
 
         ax.grid(linestyle=":", linewidth=0.5)
         ax.legend()
+
+    def make_video(self):
+        pass
 
     @staticmethod
     def create(argv):
@@ -380,9 +399,13 @@ class MLX90640Processor(logger.LoggingClass):
             "-f", "--fps", type=int, required=True,
             help="Frames per second, required for timing calculation"
         )
+        parser.add_argument(
+            "-d", "--distance", type=float, required=True,
+            help="Distance in mm from the output of the lens' telescope to the target material"
+        )
 
         args = parser.parse_args(argv)
-        return MLX90640Processor(args.fps, args.raw_file)
+        return MLX90640Processor(args.fps, args.distance, args.raw_file)
 
 
 if __name__ == "__main__":

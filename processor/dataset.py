@@ -4,6 +4,7 @@
 
 import argparse, os, sys
 
+import processor
 from xpython.common import logger, files
 
 
@@ -56,6 +57,10 @@ class DatasetsManager(logger.LoggingClass):
     def list(self):
         self._l.info(f"datasets = \n\t{str(self)}")
 
+    def analyze(self, index, plot_frames=True, plot_general=True):
+        ds = self.datasets[index]
+        processor.MLX90640Processor(*ds, plot_frames=plot_frames, plot_general=plot_general, jump_frames=ds[0])
+
     @staticmethod
     def create(argv):
         """Factory method to instantiate the class using the arguments from the CLI"""
@@ -71,11 +76,18 @@ class DatasetsManager(logger.LoggingClass):
             type=files.is_writable_dir, metavar="FILE", default=os.getcwd(),
             help="Directory with the datasets"
         )
+        parser.add_argument(
+            "-a", "--analyze",
+            type=int, required=False,
+            help="Analyzes the dataset whose index is given as a parameter of the call"
+        )
 
         args = parser.parse_args(argv)
 
         if 'list' in args:
             DatasetsManager(args.directory).list()
+        if 'analyze' in args:
+            DatasetsManager(args.directory).analyze(args.analyze)
 
 
 if __name__ == "__main__":
