@@ -7,6 +7,7 @@ import numpy as np
 import os
 import pathlib
 import shutil
+import cv2
 
 from xpython.common import files, logger
 
@@ -28,7 +29,7 @@ class MLX90640Frame(logger.LoggingClass):
         self.time_us = time_us
         self.plot_frame = plot_frame
 
-        self.image_filename = "-".join([MLX90640Processor.dataset_name, "{:.0f}".format(self.time_us)]) + '.png'
+        self.image_filename = "-".join([MLX90640Processor.dataset_name, "{:04.0f}".format(self.time_us/1e6)]) + '.png'
         self.image_filepath = os.path.join(MLX90640Processor.dataset_dirpath, self.image_filename)
 
         self.process()
@@ -76,7 +77,7 @@ class MLX90640Frame(logger.LoggingClass):
         """
 
         fig, ax = pl.subplots()
-        fig.suptitle(f"{MLX90640Processor.dataset_name}@{self.time_us/1e6:3.3f} s, dT = {self.diff_t_12:2.3f} (degC)")
+        fig.suptitle(f"{MLX90640Processor.dataset_name}@{self.time_us/1e6:3.3f} (s), dT = {self.diff_t_12:2.3f} (degC)")
 
         self._plot_frame(fig, ax)
 
@@ -244,7 +245,8 @@ class MLX90640Processor(logger.LoggingClass):
             shutil.rmtree(self.dataset_dirpath, ignore_errors=True)
         os.mkdir(self.dataset_dirpath)
 
-        self.image_filepath = os.path.join(self.dataset_dirpath, 'general.png')
+        self.image_filepath = os.path.join(self.dataset_dirpath, 'overall.png')
+        self.video_filepath = os.path.join(self.dataset_dirpath, 'overall.avi')
 
         self.calculate_reference_pixels()
         self.process()
@@ -325,6 +327,7 @@ class MLX90640Processor(logger.LoggingClass):
 
         if self.plot_general:
             self.plot()
+            self.video()
 
     def plot(self):
         """
@@ -382,8 +385,21 @@ class MLX90640Processor(logger.LoggingClass):
         ax.grid(linestyle=":", linewidth=0.5)
         ax.legend()
 
-    def make_video(self):
-        pass
+    def video(self, codec='mp4v'):
+        """Makes a video out of all the frames
+        ffmpeg -r 4 -f image2 -s 1920x1080 -i ds-16-55-20200522-DSN100umF-%04d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p test.m
+        """
+        imgs = [cv2.imread(f.image_filepath, cv2.IMREAD_UNCHANGED) for f in self.frames if f.plot_frame]
+        size = imgs[0].shape[1], imgs[0].shape[0]
+        self._l.debug(
+            f"Image shape = {imgs[0].shape}, video shape = {size}, fps = {self.fps}, images = {len(imgs)}, frames = {len(self.frames)}"
+        )
+
+        out = cv2.VideoWriter(self.video_filepath, cv2.VideoWriter_fourcc(*codec), 1.*self.fps, size)
+        for img in imgs:
+            out.write(img)
+        out.release()
+        cv2.destroyAllWindows()
 
     @staticmethod
     def create(argv):
