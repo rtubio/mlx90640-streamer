@@ -94,10 +94,6 @@ configure_systemd () {
 
 create_streamer_conf () {
     # This function creates the configuration file for the streaming script.
-    # $1 : path to the configuration file
-    # $2 : FPS (default value)
-    # $3 : HOST (default value)
-    # $4 : PORT (default value)
 
   filestr=$"
 FPS=$FPS
