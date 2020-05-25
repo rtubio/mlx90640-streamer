@@ -84,9 +84,9 @@ class DatasetsManager(logger.LoggingClass):
 
         args = parser.parse_args(argv)
 
-        if 'list' in args:
+        if 'list' in args and args.list:
             DatasetsManager(args.directory).list()
-        if 'analyze' in args:
+        if 'analyze' in args and args.analyze:
             DatasetsManager(args.directory).analyze(args.analyze)
 
 
