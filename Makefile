@@ -62,7 +62,7 @@ $(streamer_output) : CXXFLAGS+=-I$(LIB_DIR) -std=c++11
 $(reader_objects) : CXXFLAGS+=-std=c++11
 $(reader_output) : CXXFLAGS+=-I$(LIB_DIR) -std=c++11
 
-$(rawrgb_objects) : CXXFLAGS+=-std=c++11
+$(rawrgb_objects) : CXXFLAGS+=-std=c++11 -Wall
 $(rawrgb_output) : CXXFLAGS+=-I$(LIB_DIR) -std=c++11
 
 lib/interpolate.o : CC=$(CXX) -std=c++11
