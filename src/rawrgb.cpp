@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <syslog.h>
 #include "MLX90640_API.h"
 
 /*
@@ -144,10 +145,12 @@ int main(int argc, char *argv[]){
     static long frame_time_micros = FRAME_TIME_MICROS;
     char *p;
 
+    openlog("rawrgb", LOG_PID, LOG_SYSLOG);
+
     if(argc > 1){
         fps = strtol(argv[1], &p, 0);
         if (errno !=0 || *p != '\0') {
-            fprintf(stderr, "Invalid framerate\n");
+            syslog(LOG_ERR, "Invalid framerate\n");
             return 1;
         }
         frame_time_micros = 1000000/fps;
@@ -180,7 +183,7 @@ int main(int argc, char *argv[]){
             MLX90640_SetRefreshRate(MLX_I2C_ADDR, 0b111);
             break;
         default:
-            fprintf(stderr, "Unsupported framerate: %d\n", fps);
+            syslog(LOG_ERR, "Unsupported framerate\n");
             return 1;
     }
     MLX90640_SetChessMode(MLX_I2C_ADDR);
@@ -190,10 +193,6 @@ int main(int argc, char *argv[]){
     MLX90640_SetResolution(MLX_I2C_ADDR, 0x03);
     MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
     int frame_no = 0;
-
-    // RAW binary data is saved in a temporary dump
-    // FILE *rawfp = fopen("/tmp/dataset.bin", "ab");
-    // if (rawfp == NULL) exit(-1);
 
     while (1){
 
@@ -224,12 +223,11 @@ int main(int argc, char *argv[]){
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
-        fprintf(stdout, ">>> frame_no = %d\n", frame_no++);
+        syslog(LOG_INFO, ">>> frame_no = %d\n", frame_no++);
 
     }
 
-    // fclose(rawfp);
-
+    closelog();
     return 0;
 
 }
