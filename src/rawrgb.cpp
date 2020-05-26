@@ -79,7 +79,7 @@
 // Valid frame rates are 1, 2, 4, 8, 16, 32 and 64
 // The i2c baudrate is set to 1mhz to support these
 #define FPS 16
-#define FRAME_TIME_MICROS (1000000/FPS)
+#define FRAME_TIME_MICROS (1e6/FPS)
 
 // Despite the framerate being ostensibly FPS hz
 // The frame is often not ready in time
@@ -219,11 +219,12 @@ int main(int argc, char *argv[]){
         fwrite(&pixels, sizeof(float), IMAGE_PIXELS, stderr);
         fflush(stderr);  // flush now to file
 
-        auto end = std::chrono::system_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
+        auto end        = std::chrono::system_clock::now();
+        auto elapsed    = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        auto next_sleep = std::chrono::microseconds(frame_time - elapsed);
+        std::this_thread::sleep_for(std::chrono::microseconds(next_sleep));
 
-        syslog(LOG_INFO, ">>> frame_no = %d, slept for = %d\n", frame_no++, frame_time - elapsed);
+        syslog(LOG_INFO, ">>> frame_no = %d, slept for = %d\n", frame_no++, next_sleep);
 
     }
 
