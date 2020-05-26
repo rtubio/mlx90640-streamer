@@ -227,7 +227,10 @@ int main(int argc, char *argv[]){
         long long int next_sleep = (long long int)
           std::chrono::duration_cast<std::chrono::microseconds>(frame_time - elapsed).count();
 
-        if (next_sleep > 0) std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
+        if (next_sleep > 0) {
+          syslog(LOG_INFO, "sleeping for %lld", next_sleep);
+          std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
+        }
 
         #ifdef DEB_TIMING
           syslog(
