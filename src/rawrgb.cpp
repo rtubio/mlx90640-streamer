@@ -221,10 +221,10 @@ int main(int argc, char *argv[]){
 
         auto end        = std::chrono::system_clock::now();
         auto elapsed    = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        auto next_sleep = std::chrono::microseconds(frame_time - elapsed);
-        std::this_thread::sleep_for(std::chrono::microseconds(next_sleep));
+        auto next_sleep = std::chrono::duration_cast<std::chrono::microseconds>(frame_time - elapsed);
+        std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
-        syslog(LOG_INFO, ">>> frame_no = %d, slept for = %d\n", frame_no++, next_sleep);
+        syslog(LOG_INFO, ">>> frame_no = %d, slept for = %d\n", frame_no++, next_sleep.count());
 
     }
 
