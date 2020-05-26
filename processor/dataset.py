@@ -42,7 +42,7 @@ class DatasetsManager(logger.LoggingClass):
         self.basedir = basedir
 
         self.datasets = [(
-            int(f.split('-')[1]),
+            1, # int(f.split('-')[1]), # Due to an issue with the driver, all datasets are FPS=1
             int(f.split('-')[2]),
             os.path.join(self.basedir, f)
         )
@@ -57,9 +57,16 @@ class DatasetsManager(logger.LoggingClass):
     def list(self):
         self._l.info(f"datasets = \n\t{str(self)}")
 
-    def analyze(self, index, plot_frames=True, plot_general=True):
+    def analyze(self, index, update=False):
         ds = self.datasets[index]
-        processor.MLX90640Processor(*ds, plot_frames=plot_frames, plot_general=plot_general, jump_frames=ds[0])
+        processor.MLX90640Processor(*ds, update=update)
+
+    def analyze_all(self, update=False):
+        for ds_index in range(len(self.datasets)):
+            try:
+                self.analyze(ds_index, update=update)
+            except Exception as ex:
+                self._l.error(f"Exception while processing dataset {self.datasets[ds_index]}, msg = {ex}")
 
     @staticmethod
     def create(argv):
@@ -70,6 +77,11 @@ class DatasetsManager(logger.LoggingClass):
             "-l", "--list",
             action='store_true', required=False,
             help="Lists the available dataset files"
+        )
+        parser.add_argument(
+            "-u", "--update",
+            action='store_true', required=False,
+            help="This flag forces the processor to update the results for all existing datasets"
         )
         parser.add_argument(
             "-d", "--directory",
@@ -87,7 +99,11 @@ class DatasetsManager(logger.LoggingClass):
         if 'list' in args and args.list:
             DatasetsManager(args.directory).list()
         if 'analyze' in args and args.analyze:
-            DatasetsManager(args.directory).analyze(args.analyze)
+            index = args.analyze
+            if (index == -1):
+                DatasetsManager(args.directory).analyze_all(update=args.update)
+            else:
+                DatasetsManager(args.directory).analyze(args.analyze, update=args.update)
 
 
 if __name__ == "__main__":

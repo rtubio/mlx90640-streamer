@@ -17,19 +17,23 @@ class MLX90640Frame(logger.LoggingClass):
     This is an array of floats, with 32x24 elements (MLX90640 pixels)
     """
 
-    def __init__(self, frame, time_us, plot_frame=True):
+    def __init__(self, frame, time_us, read_no, plot_frame=True, plot_no=0):
         """Default constructor
-        frame - array with the pixel data
-        time_us - timestamp (in microseconds) at which the image was taken
-        plot=True - flag that indicates whether this frame should be plotted
+        frame       - array with the pixel data
+        time_us     - timestamp (in microseconds) at which the image was taken
+        read_no     - index in which it was read from the raw file
+        plot=True   - flag that indicates whether this frame should be plotted
+        plot_no=0   - sequential plotting number, needed for the video generation
         """
         super(MLX90640Frame, self).__init__()
 
         self.frame = frame
         self.time_us = time_us
+        self.read_no = read_no
         self.plot_frame = plot_frame
+        self.plot_no = plot_no
 
-        self.image_filename = "-".join([MLX90640Processor.dataset_name, "{:04.0f}".format(self.time_us/1e6)]) + '.png'
+        self.image_filename = "-".join([MLX90640Processor.dataset_name, "{:04d}".format(self.plot_no)]) + '.png'
         self.image_filepath = os.path.join(MLX90640Processor.dataset_dirpath, self.image_filename)
 
         self.process()
@@ -206,7 +210,8 @@ class MLX90640Processor(logger.LoggingClass):
         self,
         fps, distance_mm, raw_filepath,
         px_distance_mm=20,
-        plot_frames=True, plot_general=False, jump_frames=2,
+        plot_frames=True, plot_general=False, jump_frames=4,
+        update=False,
         fontsize=9
     ):
         """Default constructor
@@ -215,7 +220,8 @@ class MLX90640Processor(logger.LoggingClass):
         raw_filepath        - path to the binary file with the RAW frames
         px_distance_mm=10   - mm of distance from P0 to P1 or P2
         plot_frames=True    - flag that indicates whether each frame should be plotted
-        jump_frames=2       - fraction of frames to be plot
+        jump_frames=4       - fraction of frames to be plot
+        update=False        - whether to update datasets whose results already exists
         fontsize=9          - default fontsize for the generated figures
         """
         super(MLX90640Processor, self).__init__()
@@ -227,6 +233,7 @@ class MLX90640Processor(logger.LoggingClass):
         self.plot_frames = plot_frames
         self.plot_general = plot_general
         self.jump_frames = jump_frames
+        self.update = update
         self.fontsize = fontsize
 
         self.timestep_us = 1e6 / self.fps
@@ -242,6 +249,9 @@ class MLX90640Processor(logger.LoggingClass):
         )
 
         if os.path.isdir(self.dataset_dirpath) and os.path.exists(self.dataset_dirpath):
+            if not self.update:
+                raise Exception(f"Results already exists for dataset {self.dataset_name}, skipping")
+            self._l.debug(f"Updating results for dataset {self.dataset_name}")
             shutil.rmtree(self.dataset_dirpath, ignore_errors=True)
         os.mkdir(self.dataset_dirpath)
 
@@ -262,6 +272,7 @@ class MLX90640Processor(logger.LoggingClass):
         time_us = 0.0
         i = 0
         plot_frame = False
+        plot_no = 1
 
         with open(self.raw_filepath, mode='rb') as f:
             while True:
@@ -276,11 +287,11 @@ class MLX90640Processor(logger.LoggingClass):
                     else:
                         plot_frame = False
 
-                    frame = MLX90640Frame(array, time_us, plot_frame=plot_frame)
+                    frame = MLX90640Frame(array, time_us, i, plot_frame=plot_frame, plot_no=plot_no)
                     self.frames.append(frame)
 
-                    self._l.debug(f"Read frame #{i}")
-
+                    if self.plot_frames and (i % self.jump_frames == 0):
+                        plot_no += 1
                     i += 1
                     time_us += self.timestep_us
 
@@ -378,7 +389,7 @@ class MLX90640Processor(logger.LoggingClass):
 
         ax.set_xlabel(f"time (s) [{self.t[0]:2.1f}, {self.t[-1]:2.1f}]")
         ax.set_ylabel(f"temperature (degC) [{np.min(self.min):2.1f}, {np.max(self.max):2.1f}]")
-        ax.set_xlim([0, 100])
+        ax.set_ylim([0, 100])
 
         ax.plot(self.t, self.t0,    linewidth=0.75, label="Tref#0")
         ax.plot(self.t, self.t1,    linewidth=0.75, label="Tref#1")
@@ -398,6 +409,7 @@ class MLX90640Processor(logger.LoggingClass):
         """Makes a video out of all the frames
         ffmpeg -r 4 -f image2 -s 1920x1080 -i ds-16-55-20200522-DSN100umF-%04d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p test.mp4
 
+        ffmpeg -r 4 -f image2 -s 640x480 -i ds-16-55-20200525-DSNGR100u-%04d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p /home/rtubio/repos/mlx90640-streamer/datasets/ds-16-55-20200525-DSNGR100u/overall.mp
         # FIXME OpenCV not working for some reason, hard to find the reason (no debug data from OpenCV library)
 
         import cv2
@@ -420,7 +432,8 @@ class MLX90640Processor(logger.LoggingClass):
             "-vcodec libx264",
             "-crf 25",
             "-pix_fmt yuv420p",
-            "{}".format(self.video_filepath)
+            "{}".format(self.video_filepath),
+            "-y"
         ]
         ffmpeg_shell_call = ' '.join(ffmpeg_call)
 
@@ -428,7 +441,6 @@ class MLX90640Processor(logger.LoggingClass):
         self._l.debug(f"Calling <ffmpeg> with cwd = {self.dataset_dirpath}")
 
         output = subprocess.check_output(ffmpeg_shell_call, shell=True, cwd=self.dataset_dirpath)
-        self._l.debug(f"ffmpeg = {output}")
 
     @staticmethod
     def create(argv):
