@@ -6,7 +6,7 @@
 
 counter="$1"
 
-while [ $counter -gt 0 ]
+while [[ $counter -gt 0 ]]
 do
   echo -n "$counter "
   ((counter--))
