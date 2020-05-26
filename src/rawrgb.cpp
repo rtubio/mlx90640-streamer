@@ -72,6 +72,8 @@
  */
 
 
+#define DEB_TIMING
+
 #define MLX_I2C_ADDR 0x33
 
 #define IMAGE_SCALE 5
@@ -206,6 +208,8 @@ int main(int argc, char *argv[]){
         eTa = MLX90640_GetTa(frame, &mlx90640); // Sensor ambient temprature
         MLX90640_CalculateTo(frame, &mlx90640, emissivity, eTa, mlx90640To); //calculate temprature of all pixels, base on emissivity of object
 
+        auto end_frame_read = std::chrono::system_clock::now();
+
         //Fill image array with false-colour data (raw RGB image with 24 x 32 x 24bit per pixel)
         for (int y = 0; y < 24; y++) {
             for (int x = 0; x < 32; x++) {
@@ -215,15 +219,16 @@ int main(int argc, char *argv[]){
             }
         }
 
-        //wite RGB image to stdout
-        fwrite(&image, 1, IMAGE_SIZE, stdout);
-        fflush(stdout); // flush now to stdout
+        //Write RGB image to stdout
+        // fwrite(&image, 1, IMAGE_SIZE, stdout);
+        // fflush(stdout); // flush now to stdout
 
-        fwrite(&pixels, sizeof(float), IMAGE_PIXELS, stderr);
-        fflush(stderr);  // flush now to file
+        // fwrite(&pixels, sizeof(float), IMAGE_PIXELS, stderr);
+        // fflush(stderr);  // flush now to file
 
         auto end        = std::chrono::system_clock::now();
         auto elapsed    = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        auto elapsed_fr = std::chrono::duration_cast<std::chrono::microseconds>(end_frame_read - start);
         long long int next_sleep = (long long int)
           std::chrono::duration_cast<std::chrono::microseconds>(frame_time - elapsed).count();
 
@@ -239,9 +244,10 @@ int main(int argc, char *argv[]){
               (long long int)end.time_since_epoch().count()
           );
           syslog(
-            LOG_INFO, ">>> frame_time = %lld, elapsed = %lld\n",
+            LOG_INFO, ">>> frame_time = %lld, elapsed = %lld, elapsed_fr = %lld\n",
               (long long int)frame_time.count(),
-              (long long int)elapsed.count()
+              (long long int)elapsed.count(),
+	      (long long int)elapsed_fr.count()
           );
           syslog(LOG_INFO, ">>> frame_no = %d, slept for = %lld\n", frame_no++, next_sleep);
         #endif
