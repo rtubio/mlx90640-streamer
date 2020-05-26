@@ -140,7 +140,7 @@ int main(int argc, char *argv[]){
     static float pixels[IMAGE_PIXELS];
     static float mlx90640To[IMAGE_PIXELS];
     float eTa;
-    static uint16_t data[768*sizeof(float)];
+    // static uint16_t data[768*sizeof(float)];
     static int fps = FPS;
     static long frame_time_micros = FRAME_TIME_MICROS;
     char *p;
@@ -224,9 +224,21 @@ int main(int argc, char *argv[]){
         auto next_sleep = std::chrono::duration_cast<std::chrono::microseconds>(frame_time - elapsed);
         std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
-        syslog(LOG_INFO, ">>> start = %u, end = %u\n", start, end);
-        syslog(LOG_INFO, ">>> frame_time = %u, elapsed = %u\n", frame_time, elapsed);
-        syslog(LOG_INFO, ">>> frame_no = %d, slept for = %u\n", frame_no++, next_sleep.count());
+        syslog(
+          LOG_INFO, ">>> start = %lld, end = %lld\n",
+            (long long int)start.time_since_epoch().count(),
+            (long long int)end.time_since_epoch().count()
+        );
+        syslog(
+          LOG_INFO, ">>> frame_time = %lld, elapsed = %lld\n",
+            (long long int)frame_time.count(),
+            (long long int)elapsed.count()
+        );
+        syslog(
+            LOG_INFO, ">>> frame_no = %d, slept for = %lld\n",
+            frame_no++,
+            (long long int)next_sleep.count()
+        );
 
     }
 
