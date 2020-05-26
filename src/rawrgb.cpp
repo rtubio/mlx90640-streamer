@@ -156,8 +156,6 @@ int main(int argc, char *argv[]){
         frame_time_micros = 1000000/fps;
     }
 
-    auto frame_time = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
-
     MLX90640_SetDeviceMode(MLX_I2C_ADDR, 0);
     MLX90640_SetSubPageRepeat(MLX_I2C_ADDR, 0);
     switch(fps){
@@ -192,7 +190,9 @@ int main(int argc, char *argv[]){
     MLX90640_DumpEE(MLX_I2C_ADDR, eeMLX90640);
     MLX90640_SetResolution(MLX_I2C_ADDR, 0x03);
     MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
+
     int frame_no = 0;
+    auto frame_time = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
 
     while (1){
 
@@ -221,8 +221,10 @@ int main(int argc, char *argv[]){
 
         auto end        = std::chrono::system_clock::now();
         auto elapsed    = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        auto next_sleep = std::chrono::duration_cast<std::chrono::microseconds>(frame_time - elapsed);
-        std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
+        long long int next_sleep = (long long int)
+          std::chrono::duration_cast<std::chrono::microseconds>(frame_time - elapsed).count();
+
+        if (next_sleep > 0) std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
         syslog(
           LOG_INFO, ">>> start = %lld, end = %lld\n",
@@ -234,11 +236,7 @@ int main(int argc, char *argv[]){
             (long long int)frame_time.count(),
             (long long int)elapsed.count()
         );
-        syslog(
-            LOG_INFO, ">>> frame_no = %d, slept for = %lld\n",
-            frame_no++,
-            (long long int)next_sleep.count()
-        );
+        syslog(LOG_INFO, ">>> frame_no = %d, slept for = %lld\n", frame_no++, next_sleep);
 
     }
 
