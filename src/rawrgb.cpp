@@ -224,8 +224,8 @@ int main(int argc, char *argv[]){
         auto next_sleep = std::chrono::duration_cast<std::chrono::microseconds>(frame_time - elapsed);
         std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
+        syslog(LOG_INFO, ">>> start = %d, end = %d\n", start, end);
         syslog(LOG_INFO, ">>> frame_time = %d, elapsed = %d\n", frame_time, elapsed);
-
         syslog(LOG_INFO, ">>> frame_no = %d, slept for = %d\n", frame_no++, next_sleep.count());
 
     }
