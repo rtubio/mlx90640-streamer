@@ -72,7 +72,8 @@
  */
 
 
-#define DEB_TIMING
+// This flag activates TIMING DEBUGGGIN
+// #define DEB_TIMING
 
 #define MLX_I2C_ADDR 0x33
 
@@ -193,10 +194,7 @@ int main(int argc, char *argv[]){
     MLX90640_SetResolution(MLX_I2C_ADDR, 0x03);
     MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
 
-    #ifdef DEB_TIMING
-      int frame_no = 0;
-    #endif
-
+    int frame_no = 0;
     auto frame_time = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
 
     while (1){
@@ -220,11 +218,11 @@ int main(int argc, char *argv[]){
         }
 
         //Write RGB image to stdout
-        // fwrite(&image, 1, IMAGE_SIZE, stdout);
-        // fflush(stdout); // flush now to stdout
+        fwrite(&image, 1, IMAGE_SIZE, stdout);
+        fflush(stdout); // flush now to stdout
 
-        // fwrite(&pixels, sizeof(float), IMAGE_PIXELS, stderr);
-        // fflush(stderr);  // flush now to file
+        fwrite(&pixels, sizeof(float), IMAGE_PIXELS, stderr);
+        fflush(stderr);  // flush now to file
 
         auto end        = std::chrono::system_clock::now();
         auto elapsed    = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -247,7 +245,7 @@ int main(int argc, char *argv[]){
             LOG_INFO, ">>> frame_time = %lld, elapsed = %lld, elapsed_fr = %lld\n",
               (long long int)frame_time.count(),
               (long long int)elapsed.count(),
-	      (long long int)elapsed_fr.count()
+              (long long int)elapsed_fr.count()
           );
           syslog(LOG_INFO, ">>> frame_no = %d, slept for = %lld\n", frame_no++, next_sleep);
         #endif
