@@ -191,7 +191,10 @@ int main(int argc, char *argv[]){
     MLX90640_SetResolution(MLX_I2C_ADDR, 0x03);
     MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
 
-    int frame_no = 0;
+    #ifdef DEB_TIMING
+      int frame_no = 0;
+    #endif
+
     auto frame_time = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
 
     while (1){
@@ -226,17 +229,19 @@ int main(int argc, char *argv[]){
 
         if (next_sleep > 0) std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
-        syslog(
-          LOG_INFO, ">>> start = %lld, end = %lld\n",
-            (long long int)start.time_since_epoch().count(),
-            (long long int)end.time_since_epoch().count()
-        );
-        syslog(
-          LOG_INFO, ">>> frame_time = %lld, elapsed = %lld\n",
-            (long long int)frame_time.count(),
-            (long long int)elapsed.count()
-        );
-        syslog(LOG_INFO, ">>> frame_no = %d, slept for = %lld\n", frame_no++, next_sleep);
+        #ifdef DEB_TIMING
+          syslog(
+            LOG_INFO, ">>> start = %lld, end = %lld\n",
+              (long long int)start.time_since_epoch().count(),
+              (long long int)end.time_since_epoch().count()
+          );
+          syslog(
+            LOG_INFO, ">>> frame_time = %lld, elapsed = %lld\n",
+              (long long int)frame_time.count(),
+              (long long int)elapsed.count()
+          );
+          syslog(LOG_INFO, ">>> frame_no = %d, slept for = %lld\n", frame_no++, next_sleep);
+        #endif
 
     }
 
