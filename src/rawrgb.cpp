@@ -223,7 +223,7 @@ int main(int argc, char *argv[]){
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
 
-        syslog(LOG_INFO, ">>> frame_no = %d\n", frame_no++);
+        syslog(LOG_INFO, ">>> frame_no = %d, slept for = %d\n", frame_no++, frame_time - elapsed);
 
     }
 
