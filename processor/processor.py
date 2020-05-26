@@ -246,10 +246,8 @@ class MLX90640Processor(logger.LoggingClass):
         os.mkdir(self.dataset_dirpath)
 
         self.image_filepath = os.path.join(self.dataset_dirpath, 'overall.png')
-        self.image_wildcard = "{}-%04d.png".format(self.dataset_name)
         self.video_filepath = os.path.join(self.dataset_dirpath, 'overall.mp4')
-
-        self._l.debug(f"image_wildcard = {self.image_wildcard}")
+        self.image_wildcard = "{}-%04d.png".format(self.dataset_name)
 
         self.calculate_reference_pixels()
         self.process()
@@ -280,6 +278,8 @@ class MLX90640Processor(logger.LoggingClass):
 
                     frame = MLX90640Frame(array, time_us, plot_frame=plot_frame)
                     self.frames.append(frame)
+
+                    self._l.debug(f"Read frame #{i}")
 
                     i += 1
                     time_us += self.timestep_us

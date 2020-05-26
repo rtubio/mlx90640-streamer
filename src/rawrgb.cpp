@@ -189,6 +189,7 @@ int main(int argc, char *argv[]){
     MLX90640_DumpEE(MLX_I2C_ADDR, eeMLX90640);
     MLX90640_SetResolution(MLX_I2C_ADDR, 0x03);
     MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
+    int frame_no = 0;
 
     // RAW binary data is saved in a temporary dump
     // FILE *rawfp = fopen("/tmp/dataset.bin", "ab");
@@ -222,7 +223,8 @@ int main(int argc, char *argv[]){
         auto end = std::chrono::system_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
-        // fprintf(stdout, ">>> timeout = %d, elapsed = %d\n", frame_time, elapsed);
+
+        fprintf(stdout, ">>> frame_no = %d\n", frame_no++);
 
     }
 
