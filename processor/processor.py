@@ -7,7 +7,7 @@ import numpy as np
 import os
 import pathlib
 import shutil
-import cv2
+import subprocess
 
 from xpython.common import files, logger
 
@@ -246,7 +246,10 @@ class MLX90640Processor(logger.LoggingClass):
         os.mkdir(self.dataset_dirpath)
 
         self.image_filepath = os.path.join(self.dataset_dirpath, 'overall.png')
-        self.video_filepath = os.path.join(self.dataset_dirpath, 'overall.avi')
+        self.image_wildcard = "{}-%04d.png".format(self.dataset_name)
+        self.video_filepath = os.path.join(self.dataset_dirpath, 'overall.mp4')
+
+        self._l.debug(f"image_wildcard = {self.image_wildcard}")
 
         self.calculate_reference_pixels()
         self.process()
@@ -325,6 +328,10 @@ class MLX90640Processor(logger.LoggingClass):
         self.max_dT_index = np.where(self.diff == self.max_dT_value)[0][0]
         self.max_dT_time  = self.max_dT_index / self.fps
 
+        self.max_T2REF_value = np.max(self.t2)
+        self.max_T2REF_index = np.where(self.t2 == self.max_T2REF_value)[0][0]
+        self.max_T2REF_time  = self.max_T2REF_index / self.fps
+
         if self.plot_general:
             self.plot()
             self.video()
@@ -368,6 +375,11 @@ class MLX90640Processor(logger.LoggingClass):
         """
         This method plots the general results of the experiment in the given axis.
         """
+
+        ax.set_xlabel(f"time (s) [{self.t[0]:2.1f}, {self.t[-1]:2.1f}]")
+        ax.set_ylabel(f"temperature (degC) [{np.min(self.min):2.1f}, {np.max(self.max):2.1f}]")
+        ax.set_xlim([0, 100])
+
         ax.plot(self.t, self.t0,    linewidth=0.75, label="Tref#0")
         ax.plot(self.t, self.t1,    linewidth=0.75, label="Tref#1")
         ax.plot(self.t, self.t2,    linewidth=0.75, label="Tref#2")
@@ -375,9 +387,6 @@ class MLX90640Processor(logger.LoggingClass):
         ax.plot(self.t, self.diff,  linewidth=0.75, label="diff")
         ax.plot(self.t, self.max,   linewidth=0.75, label="max")
         ax.plot(self.t, self.min,   linewidth=0.75, label="min")
-
-        ax.set_xlabel(f"time (s) [{self.t[0]:2.1f}, {self.t[-1]:2.1f}]")
-        ax.set_ylabel(f"temperature (degC) [{np.min(self.min):2.3f}, {np.max(self.max):2.3f}]")
 
         self._plot_value_line(ax, self.max_dT_time, self.max_dT_value)
         self._plot_value_line(ax, self.t[-1], self.diff[-1])
@@ -387,19 +396,39 @@ class MLX90640Processor(logger.LoggingClass):
 
     def video(self, codec='mp4v'):
         """Makes a video out of all the frames
-        ffmpeg -r 4 -f image2 -s 1920x1080 -i ds-16-55-20200522-DSN100umF-%04d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p test.m
-        """
+        ffmpeg -r 4 -f image2 -s 1920x1080 -i ds-16-55-20200522-DSN100umF-%04d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p test.mp4
+
+        # FIXME OpenCV not working for some reason, hard to find the reason (no debug data from OpenCV library)
+
+        import cv2
         imgs = [cv2.imread(f.image_filepath, cv2.IMREAD_UNCHANGED) for f in self.frames if f.plot_frame]
         size = imgs[0].shape[1], imgs[0].shape[0]
         self._l.debug(
             f"Image shape = {imgs[0].shape}, video shape = {size}, fps = {self.fps}, images = {len(imgs)}, frames = {len(self.frames)}"
         )
-
         out = cv2.VideoWriter(self.video_filepath, cv2.VideoWriter_fourcc(*codec), 1.*self.fps, size)
         for img in imgs:
             out.write(img)
         out.release()
         cv2.destroyAllWindows()
+        """
+
+        ffmpeg_call = [
+            "ffmpeg",
+            "-r 4", "-f image2 -s 640x480",
+            "-i {}".format(self.image_wildcard),
+            "-vcodec libx264",
+            "-crf 25",
+            "-pix_fmt yuv420p",
+            "{}".format(self.video_filepath)
+        ]
+        ffmpeg_shell_call = ' '.join(ffmpeg_call)
+
+        self._l.debug(f"Calling <ffmpeg> as follows (SHELL): {ffmpeg_shell_call}")
+        self._l.debug(f"Calling <ffmpeg> with cwd = {self.dataset_dirpath}")
+
+        output = subprocess.check_output(ffmpeg_shell_call, shell=True, cwd=self.dataset_dirpath)
+        self._l.debug(f"ffmpeg = {output}")
 
     @staticmethod
     def create(argv):
