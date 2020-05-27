@@ -210,7 +210,7 @@ class MLX90640Processor(logger.LoggingClass):
         self,
         fps, distance_mm, raw_filepath,
         px_distance_mm=20,
-        plot_frames=True, plot_general=False, jump_frames=4,
+        plot_frames=True, plot_general=True, jump_frames=4,
         update=False,
         fontsize=9
     ):
