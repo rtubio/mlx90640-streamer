@@ -143,7 +143,7 @@ int main(int argc, char *argv[]){
     static float pixels[IMAGE_PIXELS];
     static float mlx90640To[IMAGE_PIXELS];
     float eTa;
-    // static uint16_t data[768*sizeof(float)];
+    static uint16_t data[768*sizeof(float)];
     static int fps = FPS;
     static long frame_time_micros = FRAME_TIME_MICROS;
     char *p;
@@ -194,7 +194,10 @@ int main(int argc, char *argv[]){
     MLX90640_SetResolution(MLX_I2C_ADDR, 0x03);
     MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
 
-    int frame_no = 0;
+    #ifdef DEB_TIMING
+      int frame_no = 0;
+    #endif
+
     auto frame_time = std::chrono::microseconds(frame_time_micros + OFFSET_MICROS);
 
     while (1){
