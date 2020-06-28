@@ -24,12 +24,13 @@ configure_os () {
   }
 
   [[ -z $( uname -a | grep 'Debian' ) ]] && {
-    echo "[warn, $0] OS is not Debian, skipping package installation"
+    echo "[warn, $0] OS is not Debian, installing raspbian packages"
+    [[ -f "$RSP_PKGS" ]] && sudo apt install $(grep -vE "^\s*#" $RSP_PKGS | tr "\n" " ")
     return
   }
 
   [[ -f "$DEB_PKGS" ]] && {
-    sudo apt install $(grep -vE "^\s*#" $DEB_PKGS  | tr "\n" " ")
+    sudo apt install $(grep -vE "^\s*#" $DEB_PKGS | tr "\n" " ")
   } || {
     echo "[warn, $0] OS packages file <$DEB_PKGS> does not exist, skipping"
   }

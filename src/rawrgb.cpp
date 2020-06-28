@@ -234,7 +234,7 @@ int main(int argc, char *argv[]){
           std::chrono::duration_cast<std::chrono::microseconds>(frame_time - elapsed).count();
 
         if (next_sleep > 0) {
-          syslog(LOG_INFO, "sleeping for %lld", next_sleep);
+          // syslog(LOG_INFO, "sleeping for %lld", next_sleep);
           std::this_thread::sleep_for(std::chrono::microseconds(frame_time - elapsed));
         }
 
