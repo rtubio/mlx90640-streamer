@@ -85,7 +85,8 @@ class DatasetsManager(logger.LoggingClass):
         )
         parser.add_argument(
             "-d", "--directory",
-            type=files.is_writable_dir, metavar="FILE", default=os.getcwd(),
+            type=files.is_writable_dir, required=True,
+            metavar="FILE", default=os.getcwd(),
             help="Directory with the datasets"
         )
         parser.add_argument(

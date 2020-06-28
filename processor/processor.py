@@ -8,6 +8,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 
 from xpython.common import files, logger
 
