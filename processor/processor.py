@@ -300,6 +300,10 @@ class MLX90640Processor(logger.LoggingClass):
                     print(f"[warn] Aborting file reading, reason = {ex}")
                     break
 
+                except Exception as ex:
+                    print(f"[warn] Error processing frame, skipping...")
+                    continue
+
     def frames2vectors(self):
         """
         This method postprocesses the read frames and generates the vectors with the time dependent results.
@@ -368,6 +372,7 @@ class MLX90640Processor(logger.LoggingClass):
         self.frames[self.max_dT_index]._plot_frame(fig, ax2)
         self.frames[-1]._plot_frame(fig, ax3)
 
+        self._l.info(f"Saving general figure as: {self.image_filepath}")
         pl.savefig(self.image_filepath)
         pl.close()
 
