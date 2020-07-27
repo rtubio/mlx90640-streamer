@@ -39,7 +39,7 @@ sudo service mlx90640 stop || {
   exit -1
 }
 
-scp "$LOCAL_DATABIN" $USER@$HOST:~/"$REMOTE_DATABIN" || {
+scp "$LOCAL_DATABIN" $USER@$HOST:"$REMOTE_DATABIN" || {
   echo "Could not copy <$LOCAL_DATABIN> to <$REMOTE_DATABIN> as <$USER> on <$HOST>"
   exit -1
 }
