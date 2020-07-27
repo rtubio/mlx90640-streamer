@@ -14,7 +14,7 @@
 
 USER="$1"
 HOST="$2"
-LOCAL_DATABIN="/tmp/databin.bin"
+LOCAL_DATABIN="/tmp/dataset.bin"
 REMOTE_DATABIN="~/databin.raw"
 
 left=0
