@@ -39,6 +39,9 @@ sudo service mlx90640 stop || {
   exit -1
 }
 
+# Simple hack to check if, in case it is a local network name, the name has been resolved
+ping -c 5 "$HOST" || ping -c 5 "$HOST"
+
 scp "$LOCAL_DATABIN" $USER@$HOST:"$REMOTE_DATABIN" || {
   echo "Could not copy <$LOCAL_DATABIN> to <$REMOTE_DATABIN> as <$USER> on <$HOST>"
   exit -1
