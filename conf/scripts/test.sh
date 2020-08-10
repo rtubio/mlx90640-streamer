@@ -25,6 +25,8 @@ sudo service mlx90640 restart || {
   exit -1
 }
 
+echo ">>> Test starts on $(date)"
+
 echo "Countdown until the test ends..."
 for counter in $( seq 0 1 $max )
 do
@@ -32,12 +34,14 @@ do
   echo -n "$left "
   sleep 1
 done
-echo "Test ended, stopping services and collecting data..."
 
+echo "Test ended, stopping services and collecting data..."
 sudo service mlx90640 stop || {
   echo "Could not stop the MLX90640 service, please check."
   exit -1
 }
+
+echo ">>> Test ended on $(date)"
 
 # Simple hack to check if, in case it is a local network name, the name has been resolved
 ping -c 5 "$HOST" || ping -c 5 "$HOST"
